@@ -1,0 +1,196 @@
+---
+import { getEmDashCollection } from "emdash";
+import Base from "../../layouts/Base.astro";
+
+type Entry = { data: Record<string, unknown>; id: string };
+
+let members: Entry[] = [];
+try {
+	const result = await getEmDashCollection("team");
+	members = result.entries as Entry[];
+} catch {}
+---
+
+<Base title="Our Team" description="Meet the people behind our work.">
+	<section class="page-hero">
+		<div class="page-hero-bg"></div>
+		<div class="page-hero-inner">
+			<h1 class="page-hero-title">Our Team</h1>
+			<p class="page-hero-subtitle">Meet the people behind our work</p>
+		</div>
+	</section>
+
+	<section class="page-content">
+		<div class="page-inner">
+			{members.length === 0 ? (
+				<div class="empty-state">
+					<p>No team members have been added yet.</p>
+					<a href="/_emdash/admin" class="btn">Open Admin</a>
+				</div>
+			) : (
+				<div class="team-grid">
+					{members.map((m) => {
+						const name = String(m.data.name || m.data.title || "");
+						const role = String(m.data.role || m.data.position || "");
+						const bio = String(m.data.bio || "");
+						const avatarMediaId = m.data.avatarMediaId as string | undefined;
+						const initial = name.charAt(0) || "?";
+
+						return (
+							<div class="team-card">
+								{avatarMediaId ? (
+									<img
+										src={`/_emdash/api/media/file/${avatarMediaId}`}
+										alt={name}
+										class="team-photo"
+									/>
+								) : (
+									<div class="team-avatar">{initial}</div>
+								)}
+								<h3 class="team-name">{name}</h3>
+								{role && <p class="team-role">{role}</p>}
+								{bio && (
+									<p class="team-bio">
+										{bio.length > 160 ? bio.slice(0, 160) + "..." : bio}
+									</p>
+								)}
+							</div>
+						);
+					})}
+				</div>
+			)}
+		</div>
+	</section>
+</Base>
+
+<style>
+	/* Page hero */
+	.page-hero {
+		position: relative;
+		overflow: hidden;
+		padding: 4rem 1.5rem;
+		background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #312e81 100%);
+		color: #fff;
+		text-align: center;
+	}
+	.page-hero-bg {
+		position: absolute;
+		inset: 0;
+		opacity: 0.07;
+		background-image:
+			radial-gradient(circle at 25% 25%, #fff 1px, transparent 1px),
+			radial-gradient(circle at 75% 75%, #fff 1px, transparent 1px);
+		background-size: 50px 50px;
+	}
+	.page-hero-inner {
+		position: relative;
+		max-width: 52rem;
+		margin: 0 auto;
+	}
+	.page-hero-title {
+		font-size: clamp(2rem, 5vw, 3rem);
+		font-weight: 800;
+		letter-spacing: -0.03em;
+		line-height: 1.1;
+		margin-bottom: 0.75rem;
+	}
+	.page-hero-subtitle {
+		font-size: clamp(1rem, 2vw, 1.2rem);
+		color: #93c5fd;
+		max-width: 36rem;
+		margin: 0 auto;
+		line-height: 1.6;
+	}
+
+	/* Content area */
+	.page-content {
+		padding: 4rem 1.5rem;
+		background: #fff;
+	}
+	.page-inner {
+		max-width: 72rem;
+		margin: 0 auto;
+	}
+
+	/* Team grid — matches TeamGrid section design */
+	.team-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: 2rem;
+	}
+	.team-card {
+		text-align: center;
+		padding: 2.5rem 1.5rem;
+		border-radius: 1rem;
+		border: 1px solid #f3f4f6;
+		background: #fafafa;
+		transition: all 0.25s;
+	}
+	.team-card:hover {
+		border-color: #dbeafe;
+		box-shadow: 0 8px 30px rgba(59, 130, 246, 0.06);
+		transform: translateY(-2px);
+	}
+	.team-avatar {
+		width: 5rem;
+		height: 5rem;
+		border-radius: 50%;
+		background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+		color: #fff;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 2rem;
+		font-weight: 700;
+		margin: 0 auto 1.25rem;
+	}
+	.team-photo {
+		width: 5rem;
+		height: 5rem;
+		border-radius: 50%;
+		object-fit: cover;
+		margin: 0 auto 1.25rem;
+	}
+	.team-name {
+		font-weight: 600;
+		font-size: 1.1rem;
+		color: #111827;
+		margin-bottom: 0.25rem;
+	}
+	.team-role {
+		color: #3b82f6;
+		font-size: 0.875rem;
+		font-weight: 500;
+		margin-bottom: 0.75rem;
+	}
+	.team-bio {
+		color: #6b7280;
+		font-size: 0.85rem;
+		line-height: 1.6;
+	}
+
+	/* Empty state */
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
+		text-align: center;
+		padding: 5rem 1.5rem;
+		max-width: 400px;
+		margin: 0 auto;
+	}
+	.empty-state p {
+		color: #6b7280;
+	}
+	.btn {
+		display: inline-block;
+		margin-top: 1rem;
+		padding: 0.75rem 1.5rem;
+		background: #2563eb;
+		color: #fff;
+		text-decoration: none;
+		border-radius: 0.5rem;
+		font-weight: 500;
+	}
+</style>

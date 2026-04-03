@@ -5,20 +5,86 @@ interface Props {
 	ctaText?: string;
 	ctaUrl?: string;
 }
-const { title = "Ready to get started?", subtitle = "Let's build something great together.", ctaText = "Contact Us", ctaUrl = "/contact" } = Astro.props;
+const {
+	title = "Ready to Get Started?",
+	subtitle = "Let us help you bring your ideas to life.",
+	ctaText = "Contact Us",
+	ctaUrl = "/contact",
+} = Astro.props;
 ---
 <section class="cta-section">
+	<div class="cta-glow"></div>
 	<div class="cta-inner">
 		<h2 class="cta-title">{title}</h2>
 		{subtitle && <p class="cta-subtitle">{subtitle}</p>}
-		<a href={ctaUrl} class="cta-button">{ctaText} &rarr;</a>
+		<a href={ctaUrl} class="cta-button">{ctaText}</a>
 	</div>
 </section>
 <style>
-	.cta-section { padding: 5rem 1.5rem; background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%); text-align: center; }
-	.cta-inner { max-width: 40rem; margin: 0 auto; }
-	.cta-title { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; }
-	.cta-subtitle { color: #c7d2fe; font-size: 1.1rem; margin-bottom: 2rem; }
-	.cta-button { display: inline-flex; padding: 0.875rem 2.5rem; background: #fff; color: #1e40af; font-weight: 600; border-radius: 0.5rem; text-decoration: none; font-size: 1rem; transition: all 0.2s; box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
-	.cta-button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+	.cta-section {
+		position: relative;
+		overflow: hidden;
+		padding: 5rem 1.5rem;
+		background: linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%);
+		text-align: center;
+		color: #fff;
+	}
+
+	.cta-glow {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 30rem;
+		height: 30rem;
+		transform: translate(-50%, -50%);
+		background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+		pointer-events: none;
+	}
+
+	.cta-inner {
+		position: relative;
+		max-width: 40rem;
+		margin: 0 auto;
+	}
+
+	.cta-title {
+		font-size: clamp(2rem, 5vw, 2.75rem);
+		font-weight: 800;
+		margin: 0 0 1rem;
+		letter-spacing: -0.02em;
+		line-height: 1.15;
+	}
+
+	.cta-subtitle {
+		font-size: 1.15rem;
+		color: rgba(255, 255, 255, 0.85);
+		margin: 0 0 2.25rem;
+		line-height: 1.6;
+	}
+
+	.cta-button {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.95rem 2.5rem;
+		background: #fff;
+		color: #1d4ed8;
+		font-weight: 700;
+		font-size: 1.05rem;
+		border-radius: 0.5rem;
+		text-decoration: none;
+		transition: all 0.25s ease;
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+	}
+
+	.cta-button:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+		background: #f0f4ff;
+	}
+
+	@media (max-width: 600px) {
+		.cta-section {
+			padding: 3.5rem 1.25rem;
+		}
+	}
 </style>

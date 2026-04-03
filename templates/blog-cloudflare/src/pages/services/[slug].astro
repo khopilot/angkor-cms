@@ -1,0 +1,201 @@
+---
+import { getEmDashEntry } from "emdash";
+import { PortableText } from "emdash/ui";
+import Base from "../../layouts/Base.astro";
+
+const { slug } = Astro.params;
+
+if (!slug) {
+	return Astro.redirect("/404");
+}
+
+let service: Record<string, unknown> | null = null;
+try {
+	const result = await getEmDashEntry("services", slug);
+	service = result.entry?.data as Record<string, unknown> | null;
+} catch {}
+
+if (!service) {
+	return Astro.redirect("/404");
+}
+
+const title = String(service.title || service.name || "Service");
+const description = String(service.description || service.excerpt || "");
+const icon = String(service.icon || "").slice(0, 2) || "⚡";
+const content = service.content;
+---
+
+<Base title={title} description={description}>
+	<section class="page-hero">
+		<div class="page-hero-bg"></div>
+		<div class="page-hero-inner">
+			<a href="/services" class="back-link">&larr; All Services</a>
+			<div class="hero-icon">{icon}</div>
+			<h1 class="page-hero-title">{title}</h1>
+			{description && <p class="page-hero-subtitle">{description}</p>}
+		</div>
+	</section>
+
+	<section class="page-content">
+		<div class="page-inner">
+			{content ? (
+				<div class="prose">
+					<PortableText value={content} />
+				</div>
+			) : (
+				<div class="prose">
+					<p>{description}</p>
+				</div>
+			)}
+
+			<div class="page-footer">
+				<a href="/services" class="btn-secondary">&larr; Back to Services</a>
+				<a href="/contact" class="btn-primary">Get in Touch</a>
+			</div>
+		</div>
+	</section>
+</Base>
+
+<style>
+	/* Page hero */
+	.page-hero {
+		position: relative;
+		overflow: hidden;
+		padding: 4rem 1.5rem;
+		background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #312e81 100%);
+		color: #fff;
+		text-align: center;
+	}
+	.page-hero-bg {
+		position: absolute;
+		inset: 0;
+		opacity: 0.07;
+		background-image:
+			radial-gradient(circle at 25% 25%, #fff 1px, transparent 1px),
+			radial-gradient(circle at 75% 75%, #fff 1px, transparent 1px);
+		background-size: 50px 50px;
+	}
+	.page-hero-inner {
+		position: relative;
+		max-width: 52rem;
+		margin: 0 auto;
+	}
+	.back-link {
+		display: inline-block;
+		margin-bottom: 1.5rem;
+		font-size: 0.875rem;
+		color: #93c5fd;
+		text-decoration: none;
+		transition: color 0.2s;
+	}
+	.back-link:hover {
+		color: #fff;
+	}
+	.hero-icon {
+		width: 4rem;
+		height: 4rem;
+		border-radius: 1rem;
+		background: rgba(255, 255, 255, 0.15);
+		color: #fff;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 2rem;
+		margin: 0 auto 1.25rem;
+	}
+	.page-hero-title {
+		font-size: clamp(2rem, 5vw, 3rem);
+		font-weight: 800;
+		letter-spacing: -0.03em;
+		line-height: 1.1;
+		margin-bottom: 0.75rem;
+	}
+	.page-hero-subtitle {
+		font-size: clamp(1rem, 2vw, 1.2rem);
+		color: #93c5fd;
+		max-width: 36rem;
+		margin: 0 auto;
+		line-height: 1.6;
+	}
+
+	/* Content */
+	.page-content {
+		padding: 4rem 1.5rem;
+		background: #fff;
+	}
+	.page-inner {
+		max-width: 48rem;
+		margin: 0 auto;
+	}
+
+	/* Prose */
+	.prose {
+		font-size: 1.05rem;
+		line-height: 1.8;
+		color: #374151;
+	}
+	.prose :global(h2) {
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: #111827;
+		margin: 2.5rem 0 1rem;
+	}
+	.prose :global(h3) {
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: #111827;
+		margin: 2rem 0 0.75rem;
+	}
+	.prose :global(p) {
+		margin-bottom: 1.25rem;
+	}
+	.prose :global(ul),
+	.prose :global(ol) {
+		margin-bottom: 1.25rem;
+		padding-left: 1.5rem;
+	}
+	.prose :global(li) {
+		margin-bottom: 0.5rem;
+	}
+
+	/* Footer actions */
+	.page-footer {
+		display: flex;
+		gap: 1rem;
+		justify-content: center;
+		flex-wrap: wrap;
+		margin-top: 3rem;
+		padding-top: 2rem;
+		border-top: 1px solid #f3f4f6;
+	}
+	.btn-primary {
+		display: inline-flex;
+		padding: 0.75rem 1.75rem;
+		background: #2563eb;
+		color: #fff;
+		font-weight: 600;
+		border-radius: 0.5rem;
+		text-decoration: none;
+		font-size: 0.95rem;
+		transition: all 0.2s;
+	}
+	.btn-primary:hover {
+		background: #1d4ed8;
+		transform: translateY(-1px);
+	}
+	.btn-secondary {
+		display: inline-flex;
+		padding: 0.75rem 1.75rem;
+		border: 1px solid #d1d5db;
+		border-radius: 0.5rem;
+		color: #374151;
+		text-decoration: none;
+		font-size: 0.95rem;
+		font-weight: 500;
+		transition: all 0.2s;
+	}
+	.btn-secondary:hover {
+		background: #f9fafb;
+		border-color: #9ca3af;
+	}
+</style>
