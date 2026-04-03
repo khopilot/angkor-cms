@@ -3,7 +3,7 @@
  *
  * Provides a native AI chat interface in the CMS admin.
  * Users manage their site in natural language — Claude calls CMS tools
- * via the MCP endpoint to execute actions.
+ * and the plugin executes them via the CMS REST API endpoints.
  */
 
 import type { ResolvedPlugin } from "emdash";
@@ -22,7 +22,6 @@ You manage this site directly using the tools available to you. You can:
 - Create new content collections and add custom fields
 - Manage navigation menus and taxonomy terms
 - Search across all content
-- Generate a complete site from a brief description
 
 Always act immediately without asking for confirmation (except for permanent deletions).
 When the user asks you to create content, create it right away and report what you did.
@@ -34,50 +33,174 @@ function sse(data: unknown): Uint8Array {
 	return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-/** Proxy a tool call to the MCP endpoint */
-async function callMcpTool(
+/**
+ * Execute a CMS tool by calling the internal REST API endpoints.
+ * These are the same endpoints the admin UI uses.
+ */
+async function executeTool(
 	toolName: string,
-	toolInput: unknown,
+	toolInput: Record<string, unknown>,
 	origin: string,
 	cookie: string,
 ): Promise<unknown> {
-	const response = await fetch(`${origin}/_emdash/api/mcp`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"X-EmDash-Request": "1",
-			Cookie: cookie,
-		},
-		body: JSON.stringify({
-			jsonrpc: "2.0",
-			id: 1,
-			method: "tools/call",
-			params: { name: toolName, arguments: toolInput },
-		}),
-	});
-
-	if (!response.ok) {
-		throw new Error(`MCP proxy error: ${response.status}`);
-	}
-
-	const data = (await response.json()) as {
-		result?: { content?: Array<{ text?: string }> };
-		error?: { message?: string };
+	const headers: Record<string, string> = {
+		"Content-Type": "application/json",
+		"X-EmDash-Request": "1",
+		Cookie: cookie,
 	};
 
-	if (data.error) {
-		throw new Error(data.error.message ?? "MCP tool error");
+	const get = (url: string) => fetch(`${origin}${url}`, { method: "GET", headers });
+	const post = (url: string, body?: unknown) =>
+		fetch(`${origin}${url}`, { method: "POST", headers, body: body ? JSON.stringify(body) : undefined });
+	const patch = (url: string, body: unknown) =>
+		fetch(`${origin}${url}`, { method: "PATCH", headers, body: JSON.stringify(body) });
+	const del = (url: string) => fetch(`${origin}${url}`, { method: "DELETE", headers });
+
+	let response: Response;
+
+	switch (toolName) {
+		// ── Content ──────────────────────────────────────────────────────
+		case "content_list": {
+			const { collection, status, limit, locale } = toolInput;
+			const params = new URLSearchParams();
+			if (status) params.set("status", String(status));
+			if (limit) params.set("limit", String(limit));
+			if (locale) params.set("locale", String(locale));
+			const qs = params.toString();
+			response = await get(`/_emdash/api/content/${collection}${qs ? `?${qs}` : ""}`);
+			break;
+		}
+		case "content_get": {
+			const { collection, id } = toolInput;
+			response = await get(`/_emdash/api/content/${collection}/${id}`);
+			break;
+		}
+		case "content_create": {
+			const { collection, data, slug, status, locale, translationOf } = toolInput;
+			response = await post(`/_emdash/api/content/${collection}`, {
+				...(data as Record<string, unknown>),
+				slug,
+				status,
+				locale,
+				translationOf,
+			});
+			break;
+		}
+		case "content_update": {
+			const { collection, id, data, slug } = toolInput;
+			response = await patch(`/_emdash/api/content/${collection}/${id}`, {
+				...(data as Record<string, unknown>),
+				slug,
+			});
+			break;
+		}
+		case "content_publish": {
+			const { collection, id } = toolInput;
+			response = await post(`/_emdash/api/content/${collection}/${id}/publish`);
+			break;
+		}
+		case "content_unpublish": {
+			const { collection, id } = toolInput;
+			response = await post(`/_emdash/api/content/${collection}/${id}/unpublish`);
+			break;
+		}
+		case "content_delete": {
+			const { collection, id } = toolInput;
+			response = await del(`/_emdash/api/content/${collection}/${id}`);
+			break;
+		}
+		case "content_duplicate": {
+			const { collection, id } = toolInput;
+			response = await post(`/_emdash/api/content/${collection}/${id}/duplicate`);
+			break;
+		}
+
+		// ── Schema ──────────────────────────────────────────────────────
+		case "schema_list_collections": {
+			response = await get("/_emdash/api/schema");
+			break;
+		}
+		case "schema_get_collection": {
+			const { collection } = toolInput;
+			response = await get(`/_emdash/api/schema/collections/${collection}`);
+			break;
+		}
+		case "schema_create_collection": {
+			const { slug, label, labelSingular, description, supports } = toolInput;
+			response = await post("/_emdash/api/schema/collections", {
+				slug,
+				label,
+				labelSingular,
+				description,
+				supports,
+			});
+			break;
+		}
+		case "schema_create_field": {
+			const { collection, slug, label, type, required, searchable } = toolInput;
+			response = await post(`/_emdash/api/schema/collections/${collection}/fields`, {
+				slug,
+				label,
+				type,
+				required,
+				searchable,
+			});
+			break;
+		}
+
+		// ── Search ──────────────────────────────────────────────────────
+		case "search": {
+			const { query, limit } = toolInput;
+			const params = new URLSearchParams({ q: String(query) });
+			if (limit) params.set("limit", String(limit));
+			response = await get(`/_emdash/api/search?${params.toString()}`);
+			break;
+		}
+
+		// ── Taxonomy ────────────────────────────────────────────────────
+		case "taxonomy_list": {
+			response = await get("/_emdash/api/taxonomies");
+			break;
+		}
+		case "taxonomy_get": {
+			const { taxonomy } = toolInput;
+			response = await get(`/_emdash/api/taxonomies/${taxonomy}`);
+			break;
+		}
+		case "taxonomy_create_term": {
+			const { taxonomy, name, slug, description } = toolInput;
+			response = await post(`/_emdash/api/taxonomies/${taxonomy}/terms`, {
+				name,
+				slug,
+				description,
+			});
+			break;
+		}
+
+		// ── Menu ────────────────────────────────────────────────────────
+		case "menu_get": {
+			const { menu } = toolInput;
+			response = await get(`/_emdash/api/menus/${menu}`);
+			break;
+		}
+
+		default:
+			return { error: `Unknown tool: ${toolName}` };
 	}
 
-	const text = data.result?.content?.[0]?.text;
-	if (text) {
+	// Parse response
+	if (!response.ok) {
+		const errText = await response.text().catch(() => response.statusText);
+		let errObj: unknown;
 		try {
-			return JSON.parse(text);
+			errObj = JSON.parse(errText);
 		} catch {
-			return text;
+			errObj = errText;
 		}
+		return { error: `API ${response.status}`, details: errObj };
 	}
-	return data.result ?? {};
+
+	return response.json();
 }
 
 /** Anthropic content block (partial — only fields we need) */
@@ -215,7 +338,12 @@ async function runAgenticLoop(
 			await write({ type: "tool_executing", name: block.name });
 
 			try {
-				const result = await callMcpTool(block.name, block.input, origin, cookie);
+				const result = await executeTool(
+					block.name,
+					(block.input ?? {}) as Record<string, unknown>,
+					origin,
+					cookie,
+				);
 				await write({ type: "tool_result", name: block.name, success: true });
 				toolResults.push({
 					type: "tool_result",
@@ -252,6 +380,7 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 
 		routes: {
 			chat: {
+				public: true,
 				handler: async (ctx) => {
 					// Resolve API key: option > wrangler secret > env
 					let apiKey = options.anthropicApiKey;
@@ -289,7 +418,7 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 						);
 					}
 
-					// Extract request context for MCP proxy
+					// Extract request context for internal API calls
 					const requestUrl = new URL(ctx.request.url);
 					const origin = requestUrl.origin;
 					const cookie = ctx.request.headers.get("cookie") ?? "";
