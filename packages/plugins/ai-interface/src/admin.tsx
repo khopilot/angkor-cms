@@ -9,7 +9,7 @@
  * This avoids Cloudflare Workers' self-fetch restriction.
  */
 
-import { ArrowUp, CircleNotch, Sparkle, CheckCircle, WarningCircle } from "@phosphor-icons/react";
+import { ArrowUp, CircleNotch, Sparkle, CheckCircle, WarningCircle, Trash, ArrowClockwise } from "@phosphor-icons/react";
 import type { PluginAdminExports } from "emdash";
 import { apiFetch } from "emdash/plugin-utils";
 import * as React from "react";
@@ -472,10 +472,12 @@ async function parseAnthropicStream(
 // ── Quick Actions ─────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
-	{ label: "Create a blog post", prompt: "Create a new blog post about AI in Cambodia." },
-	{ label: "List recent content", prompt: "List the 5 most recent posts." },
-	{ label: "Show site structure", prompt: "List all collections and their fields." },
-	{ label: "Add a collection", prompt: "Create a new 'Services' collection with title, description, and icon fields." },
+	{ label: "Write a blog post", prompt: "Write and create a blog post about the latest trends in our industry. Make it engaging and informative." },
+	{ label: "Show site structure", prompt: "List all collections with their fields so I can understand the site schema." },
+	{ label: "Generate a full site", prompt: "Help me set up a complete site structure: create the collections, fields, categories, and a navigation menu for a professional services website." },
+	{ label: "Create a new collection", prompt: "Create a new content collection for team members with fields for name, role, bio, photo, and social links." },
+	{ label: "Check site settings", prompt: "Show me the current site settings and list all menus." },
+	{ label: "Manage content", prompt: "List all content across all collections with their status (draft/published)." },
 ];
 
 // ── Tool Event Badge ──────────────────────────────────────────────────────────
@@ -512,6 +514,139 @@ function ToolBadge({ event }: { event: ToolEvent }) {
 
 // ── Message Bubble ────────────────────────────────────────────────────────────
 
+/** Render basic markdown: **bold**, `code`, ```blocks```, links, lists, headings */
+function renderMarkdown(text: string): React.ReactNode {
+	const lines = text.split("\n");
+	const elements: React.ReactNode[] = [];
+	let i = 0;
+
+	while (i < lines.length) {
+		const line = lines[i]!;
+
+		// Code blocks
+		if (line.startsWith("```")) {
+			const codeLines: string[] = [];
+			i++;
+			while (i < lines.length && !lines[i]!.startsWith("```")) {
+				codeLines.push(lines[i]!);
+				i++;
+			}
+			i++; // skip closing ```
+			elements.push(
+				<pre key={elements.length} className="bg-black/5 dark:bg-white/5 rounded-lg p-3 text-xs font-mono overflow-x-auto my-2">
+					<code>{codeLines.join("\n")}</code>
+				</pre>,
+			);
+			continue;
+		}
+
+		// Headings
+		const headingMatch = line.match(/^(#{1,3})\s+(.+)/);
+		if (headingMatch) {
+			const level = headingMatch[1]!.length;
+			const content = headingMatch[2]!;
+			const Tag = `h${level + 1}` as "h2" | "h3" | "h4";
+			elements.push(
+				<Tag key={elements.length} className={`font-semibold mt-3 mb-1 ${level === 1 ? "text-base" : "text-sm"}`}>
+					{formatInline(content)}
+				</Tag>,
+			);
+			i++;
+			continue;
+		}
+
+		// List items
+		if (line.match(/^[-*]\s/)) {
+			const listItems: string[] = [];
+			while (i < lines.length && lines[i]!.match(/^[-*]\s/)) {
+				listItems.push(lines[i]!.replace(/^[-*]\s/, ""));
+				i++;
+			}
+			elements.push(
+				<ul key={elements.length} className="list-disc list-inside space-y-0.5 my-1">
+					{listItems.map((item, j) => (
+						<li key={j}>{formatInline(item)}</li>
+					))}
+				</ul>,
+			);
+			continue;
+		}
+
+		// Numbered list
+		if (line.match(/^\d+\.\s/)) {
+			const listItems: string[] = [];
+			while (i < lines.length && lines[i]!.match(/^\d+\.\s/)) {
+				listItems.push(lines[i]!.replace(/^\d+\.\s/, ""));
+				i++;
+			}
+			elements.push(
+				<ol key={elements.length} className="list-decimal list-inside space-y-0.5 my-1">
+					{listItems.map((item, j) => (
+						<li key={j}>{formatInline(item)}</li>
+					))}
+				</ol>,
+			);
+			continue;
+		}
+
+		// Empty line = paragraph break
+		if (!line.trim()) {
+			elements.push(<div key={elements.length} className="h-2" />);
+			i++;
+			continue;
+		}
+
+		// Regular paragraph
+		elements.push(
+			<p key={elements.length} className="my-0.5">{formatInline(line)}</p>,
+		);
+		i++;
+	}
+
+	return elements;
+}
+
+/** Format inline markdown: **bold**, *italic*, `code`, [links](url) */
+function formatInline(text: string): React.ReactNode {
+	const parts: React.ReactNode[] = [];
+	let remaining = text;
+	let key = 0;
+
+	while (remaining) {
+		// Code
+		const codeMatch = remaining.match(/^(.*?)`([^`]+)`/);
+		if (codeMatch) {
+			if (codeMatch[1]) parts.push(formatInlineSimple(codeMatch[1], key++));
+			parts.push(
+				<code key={key++} className="bg-black/5 dark:bg-white/10 px-1 py-0.5 rounded text-xs font-mono">
+					{codeMatch[2]}
+				</code>,
+			);
+			remaining = remaining.slice(codeMatch[0].length);
+			continue;
+		}
+
+		// Bold
+		const boldMatch = remaining.match(/^(.*?)\*\*([^*]+)\*\*/);
+		if (boldMatch) {
+			if (boldMatch[1]) parts.push(formatInlineSimple(boldMatch[1], key++));
+			parts.push(<strong key={key++}>{boldMatch[2]}</strong>);
+			remaining = remaining.slice(boldMatch[0].length);
+			continue;
+		}
+
+		// No more matches — push remaining
+		parts.push(formatInlineSimple(remaining, key++));
+		break;
+	}
+
+	return parts.length === 1 ? parts[0] : parts;
+}
+
+function formatInlineSimple(text: string, key: number): React.ReactNode {
+	return <React.Fragment key={key}>{text}</React.Fragment>;
+}
+
 function MessageBubble({ msg }: { msg: ChatMessage }) {
 	if (msg.role === "user") {
 		return (
@@ -547,8 +682,8 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 					</div>
 				)}
 				{(msg.text || msg.streaming) && (
-					<div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm whitespace-pre-wrap">
-						{msg.text}
+					<div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm">
+						{msg.text ? renderMarkdown(msg.text) : null}
 						{msg.streaming && !msg.text && (
 							<span className="inline-flex gap-0.5">
 								{[0, 1, 2].map((i) => (
@@ -764,41 +899,64 @@ function ChatPage() {
 		}
 	};
 
+	const clearConversation = () => {
+		if (!isStreaming) {
+			setMessages([]);
+		}
+	};
+
 	return (
 		<div className="flex flex-col h-full max-h-[calc(100vh-8rem)]">
 			{/* Header */}
-			<div className="flex items-center gap-3 pb-4 border-b">
-				<div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-					<Sparkle className="h-5 w-5 text-white" weight="fill" />
+			<div className="flex items-center justify-between pb-4 border-b">
+				<div className="flex items-center gap-3">
+					<div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+						<Sparkle className="h-5 w-5 text-white" weight="fill" />
+					</div>
+					<div>
+						<h1 className="text-xl font-semibold">Angkor AI</h1>
+						<p className="text-sm text-muted-foreground">Manage your entire site with AI</p>
+					</div>
 				</div>
-				<div>
-					<h1 className="text-xl font-semibold">Angkor AI</h1>
-					<p className="text-sm text-muted-foreground">Manage your site in natural language</p>
-				</div>
+				{messages.length > 0 && (
+					<button
+						onClick={clearConversation}
+						disabled={isStreaming}
+						className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+						title="New conversation"
+					>
+						<ArrowClockwise className="h-3.5 w-3.5" />
+						New chat
+					</button>
+				)}
 			</div>
 
 			{/* Messages */}
 			<div className="flex-1 overflow-y-auto py-6 space-y-5 min-h-0">
 				{messages.length === 0 && (
-					<div className="flex flex-col items-center justify-center h-full gap-6 text-center px-4">
-						<div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-							<Sparkle className="h-8 w-8 text-white" weight="fill" />
+					<div className="flex flex-col items-center justify-center h-full gap-8 text-center px-4">
+						<div className="space-y-3">
+							<div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+								<Sparkle className="h-7 w-7 text-white" weight="fill" />
+							</div>
+							<div>
+								<h2 className="text-2xl font-bold">How can I help?</h2>
+								<p className="text-muted-foreground mt-1 max-w-md">
+									I can create content, set up your site structure, manage menus, moderate comments, configure settings — anything your CMS can do.
+								</p>
+							</div>
 						</div>
-						<div>
-							<h2 className="text-2xl font-bold">What would you like to do?</h2>
-							<p className="text-muted-foreground mt-1">
-								Create content, build collections, publish posts — just ask.
-							</p>
-						</div>
-						<div className="grid grid-cols-2 gap-2 w-full max-w-lg">
+						<div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-2xl">
 							{QUICK_ACTIONS.map((action) => (
 								<button
 									key={action.label}
 									onClick={() => void send(action.prompt)}
 									disabled={isStreaming}
-									className="text-left px-4 py-3 rounded-xl border hover:bg-muted transition-colors text-sm disabled:opacity-50"
+									className="text-left px-4 py-3 rounded-xl border hover:bg-muted hover:border-blue-200 dark:hover:border-blue-800 transition-all text-sm disabled:opacity-50 group"
 								>
-									{action.label}
+									<span className="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+										{action.label}
+									</span>
 								</button>
 							))}
 						</div>

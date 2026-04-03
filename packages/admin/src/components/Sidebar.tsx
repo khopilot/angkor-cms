@@ -15,6 +15,7 @@ import {
 	Users,
 	Stack,
 	ArrowsLeftRight,
+	Sparkle,
 } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
@@ -365,12 +366,16 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 				</KumoSidebar.Header>
 
 				<KumoSidebar.Content>
-					{/* Dashboard — standalone */}
+					{/* Dashboard + AI Assistant — top group */}
 					<KumoSidebar.Group>
 						<KumoSidebar.Menu>
 							<NavMenuLink
 								item={{ to: "/", label: "Dashboard", icon: SquaresFour }}
 								isActive={isItemActive("/", currentPath)}
+							/>
+							<NavMenuLink
+								item={{ to: "/plugins/ai-interface/chat", label: "AI Assistant", icon: Sparkle }}
+								isActive={isItemActive("/plugins/ai-interface/chat", currentPath)}
 							/>
 						</KumoSidebar.Menu>
 					</KumoSidebar.Group>
