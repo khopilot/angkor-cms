@@ -2,8 +2,12 @@
  * Angkor AI Interface Plugin
  *
  * Provides a native AI chat interface in the CMS admin.
- * Users manage their site in natural language — Claude calls CMS tools
- * and the plugin executes them via the CMS REST API endpoints.
+ * The server acts as a proxy for the Anthropic API key — streaming
+ * Claude's response to the browser. The agentic loop (tool execution)
+ * runs entirely on the client side, where it has direct access to
+ * CMS REST API endpoints with the user's session cookies.
+ *
+ * This avoids Cloudflare Workers' self-fetch restriction (error 1042).
  */
 
 import type { ResolvedPlugin } from "emdash";
@@ -28,343 +32,6 @@ When the user asks you to create content, create it right away and report what y
 Respond in the same language the user writes in.
 Be concise in your confirmations — just confirm what was done and provide links when relevant.`;
 
-/** Format a value as an SSE data line */
-function sse(data: unknown): Uint8Array {
-	return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
-}
-
-/**
- * Execute a CMS tool by calling the internal REST API endpoints.
- * These are the same endpoints the admin UI uses.
- */
-async function executeTool(
-	toolName: string,
-	toolInput: Record<string, unknown>,
-	origin: string,
-	cookie: string,
-): Promise<unknown> {
-	const headers: Record<string, string> = {
-		"Content-Type": "application/json",
-		"X-EmDash-Request": "1",
-		Cookie: cookie,
-	};
-
-	const get = (url: string) => fetch(`${origin}${url}`, { method: "GET", headers });
-	const post = (url: string, body?: unknown) =>
-		fetch(`${origin}${url}`, { method: "POST", headers, body: body ? JSON.stringify(body) : undefined });
-	const patch = (url: string, body: unknown) =>
-		fetch(`${origin}${url}`, { method: "PATCH", headers, body: JSON.stringify(body) });
-	const del = (url: string) => fetch(`${origin}${url}`, { method: "DELETE", headers });
-
-	let response: Response;
-
-	switch (toolName) {
-		// ── Content ──────────────────────────────────────────────────────
-		case "content_list": {
-			const { collection, status, limit, locale } = toolInput;
-			const params = new URLSearchParams();
-			if (status) params.set("status", String(status));
-			if (limit) params.set("limit", String(limit));
-			if (locale) params.set("locale", String(locale));
-			const qs = params.toString();
-			response = await get(`/_emdash/api/content/${collection}${qs ? `?${qs}` : ""}`);
-			break;
-		}
-		case "content_get": {
-			const { collection, id } = toolInput;
-			response = await get(`/_emdash/api/content/${collection}/${id}`);
-			break;
-		}
-		case "content_create": {
-			const { collection, data, slug, status, locale, translationOf } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}`, {
-				...(data as Record<string, unknown>),
-				slug,
-				status,
-				locale,
-				translationOf,
-			});
-			break;
-		}
-		case "content_update": {
-			const { collection, id, data, slug } = toolInput;
-			response = await patch(`/_emdash/api/content/${collection}/${id}`, {
-				...(data as Record<string, unknown>),
-				slug,
-			});
-			break;
-		}
-		case "content_publish": {
-			const { collection, id } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/publish`);
-			break;
-		}
-		case "content_unpublish": {
-			const { collection, id } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/unpublish`);
-			break;
-		}
-		case "content_delete": {
-			const { collection, id } = toolInput;
-			response = await del(`/_emdash/api/content/${collection}/${id}`);
-			break;
-		}
-		case "content_duplicate": {
-			const { collection, id } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/duplicate`);
-			break;
-		}
-
-		// ── Schema ──────────────────────────────────────────────────────
-		case "schema_list_collections": {
-			response = await get("/_emdash/api/schema");
-			break;
-		}
-		case "schema_get_collection": {
-			const { collection } = toolInput;
-			response = await get(`/_emdash/api/schema/collections/${collection}`);
-			break;
-		}
-		case "schema_create_collection": {
-			const { slug, label, labelSingular, description, supports } = toolInput;
-			response = await post("/_emdash/api/schema/collections", {
-				slug,
-				label,
-				labelSingular,
-				description,
-				supports,
-			});
-			break;
-		}
-		case "schema_create_field": {
-			const { collection, slug, label, type, required, searchable } = toolInput;
-			response = await post(`/_emdash/api/schema/collections/${collection}/fields`, {
-				slug,
-				label,
-				type,
-				required,
-				searchable,
-			});
-			break;
-		}
-
-		// ── Search ──────────────────────────────────────────────────────
-		case "search": {
-			const { query, limit } = toolInput;
-			const params = new URLSearchParams({ q: String(query) });
-			if (limit) params.set("limit", String(limit));
-			response = await get(`/_emdash/api/search?${params.toString()}`);
-			break;
-		}
-
-		// ── Taxonomy ────────────────────────────────────────────────────
-		case "taxonomy_list": {
-			response = await get("/_emdash/api/taxonomies");
-			break;
-		}
-		case "taxonomy_get": {
-			const { taxonomy } = toolInput;
-			response = await get(`/_emdash/api/taxonomies/${taxonomy}`);
-			break;
-		}
-		case "taxonomy_create_term": {
-			const { taxonomy, name, slug, description } = toolInput;
-			response = await post(`/_emdash/api/taxonomies/${taxonomy}/terms`, {
-				name,
-				slug,
-				description,
-			});
-			break;
-		}
-
-		// ── Menu ────────────────────────────────────────────────────────
-		case "menu_get": {
-			const { menu } = toolInput;
-			response = await get(`/_emdash/api/menus/${menu}`);
-			break;
-		}
-
-		default:
-			return { error: `Unknown tool: ${toolName}` };
-	}
-
-	// Parse response
-	if (!response.ok) {
-		const errText = await response.text().catch(() => response.statusText);
-		let errObj: unknown;
-		try {
-			errObj = JSON.parse(errText);
-		} catch {
-			errObj = errText;
-		}
-		return { error: `API ${response.status}`, details: errObj };
-	}
-
-	return response.json();
-}
-
-/** Anthropic content block (partial — only fields we need) */
-interface AnthropicBlock {
-	type: string;
-	id?: string;
-	name?: string;
-	input?: unknown;
-	text?: string;
-}
-
-/** Run the agentic loop — streaming events to `write`, returns when Claude is done */
-async function runAgenticLoop(
-	messages: Array<{ role: string; content: unknown }>,
-	apiKey: string,
-	model: string,
-	maxTokens: number,
-	origin: string,
-	cookie: string,
-	write: (data: unknown) => Promise<void>,
-): Promise<void> {
-	const conversation = [...messages];
-
-	// Safety cap: prevent runaway loops
-	for (let turn = 0; turn < 20; turn++) {
-		const response = await fetch(ANTHROPIC_API, {
-			method: "POST",
-			headers: {
-				"x-api-key": apiKey,
-				"anthropic-version": ANTHROPIC_VERSION,
-				"content-type": "application/json",
-			},
-			body: JSON.stringify({
-				model,
-				max_tokens: maxTokens,
-				system: SYSTEM_PROMPT,
-				tools: CMS_TOOLS,
-				messages: conversation,
-				stream: true,
-			}),
-		});
-
-		if (!response.ok || !response.body) {
-			const errText = await response.text().catch(() => response.statusText);
-			throw new Error(`Anthropic API ${response.status}: ${errText}`);
-		}
-
-		// Parse Anthropic SSE stream, collecting blocks
-		const reader = response.body.getReader();
-		const dec = new TextDecoder();
-		let buffer = "";
-		let stopReason: string | null = null;
-		const blocks: AnthropicBlock[] = [];
-		let currentIdx = -1;
-		const inputBuffers: Record<number, string> = {};
-
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-
-			buffer += dec.decode(value, { stream: true });
-			const lines = buffer.split("\n");
-			buffer = lines.pop() ?? "";
-
-			for (const line of lines) {
-				if (!line.startsWith("data: ")) continue;
-				const chunk = line.slice(6);
-				if (chunk === "[DONE]") continue;
-
-				let event: Record<string, unknown>;
-				try {
-					event = JSON.parse(chunk) as Record<string, unknown>;
-				} catch {
-					continue;
-				}
-
-				switch (event.type) {
-					case "content_block_start": {
-						currentIdx++;
-						const block = event.content_block as AnthropicBlock;
-						blocks[currentIdx] = { type: block.type, id: block.id, name: block.name };
-						inputBuffers[currentIdx] = "";
-						if (block.type === "tool_use") {
-							await write({ type: "tool_use", name: block.name });
-						}
-						break;
-					}
-					case "content_block_delta": {
-						const delta = event.delta as { type: string; text?: string; partial_json?: string };
-						if (delta.type === "text_delta" && delta.text) {
-							await write({ type: "text", text: delta.text });
-							const b = blocks[currentIdx];
-							if (b) b.text = (b.text ?? "") + delta.text;
-						} else if (delta.type === "input_json_delta" && delta.partial_json) {
-							inputBuffers[currentIdx] = (inputBuffers[currentIdx] ?? "") + delta.partial_json;
-						}
-						break;
-					}
-					case "content_block_stop": {
-						const b = blocks[currentIdx];
-						if (b?.type === "tool_use") {
-							try {
-								b.input = JSON.parse(inputBuffers[currentIdx] ?? "{}");
-							} catch {
-								b.input = {};
-							}
-						}
-						break;
-					}
-					case "message_delta": {
-						const delta = event.delta as { stop_reason?: string };
-						if (delta.stop_reason) stopReason = delta.stop_reason;
-						break;
-					}
-				}
-			}
-		}
-
-		// Add assistant turn to conversation
-		const assistantContent = blocks.map((b) => {
-			if (b.type === "text") return { type: "text", text: b.text ?? "" };
-			if (b.type === "tool_use") return { type: "tool_use", id: b.id, name: b.name, input: b.input ?? {} };
-			return b;
-		});
-		conversation.push({ role: "assistant", content: assistantContent });
-
-		if (stopReason !== "tool_use") break;
-
-		// Execute tools and collect results
-		const toolResults: Array<{ type: "tool_result"; tool_use_id: string; content: string }> = [];
-
-		for (const block of blocks) {
-			if (block.type !== "tool_use" || !block.id || !block.name) continue;
-
-			await write({ type: "tool_executing", name: block.name });
-
-			try {
-				const result = await executeTool(
-					block.name,
-					(block.input ?? {}) as Record<string, unknown>,
-					origin,
-					cookie,
-				);
-				await write({ type: "tool_result", name: block.name, success: true });
-				toolResults.push({
-					type: "tool_result",
-					tool_use_id: block.id,
-					content: JSON.stringify(result),
-				});
-			} catch (err) {
-				const msg = err instanceof Error ? err.message : String(err);
-				await write({ type: "tool_result", name: block.name, success: false, error: msg });
-				toolResults.push({
-					type: "tool_result",
-					tool_use_id: block.id,
-					content: JSON.stringify({ error: msg }),
-				});
-			}
-		}
-
-		conversation.push({ role: "user", content: toolResults });
-	}
-}
-
 export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 	return definePlugin({
 		id: "ai-interface",
@@ -380,75 +47,71 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 
 		routes: {
 			chat: {
-				public: true,
 				handler: async (ctx) => {
-					// Resolve API key: option > wrangler secret > env
+					// Resolve API key
 					let apiKey = options.anthropicApiKey;
 					if (!apiKey) {
 						try {
 							const { env } = await import("cloudflare:workers");
 							apiKey = (env as Record<string, string>).ANTHROPIC_API_KEY;
 						} catch {
-							// Not in Cloudflare Workers — fall through
+							// Not in Workers
 						}
 					}
 
 					if (!apiKey) {
-						return new Response(
-							`data: ${JSON.stringify({ type: "error", message: "ANTHROPIC_API_KEY is not configured. Add it as a wrangler secret." })}\n\ndata: ${JSON.stringify({ type: "done" })}\n\n`,
-							{
-								headers: {
-									"Content-Type": "text/event-stream",
-									"Cache-Control": "no-cache",
-								},
-							},
-						);
+						return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), {
+							status: 500,
+							headers: { "Content-Type": "application/json" },
+						});
 					}
 
-					// Parse request body
 					const input = ctx.input as {
 						messages?: Array<{ role: string; content: unknown }>;
 					} | null;
 					const messages = Array.isArray(input?.messages) ? input.messages : [];
 
 					if (messages.length === 0) {
-						return new Response(
-							`data: ${JSON.stringify({ type: "error", message: "No messages provided" })}\n\ndata: ${JSON.stringify({ type: "done" })}\n\n`,
-							{ status: 400, headers: { "Content-Type": "text/event-stream" } },
-						);
+						return new Response(JSON.stringify({ error: "No messages provided" }), {
+							status: 400,
+							headers: { "Content-Type": "application/json" },
+						});
 					}
-
-					// Extract request context for internal API calls
-					const requestUrl = new URL(ctx.request.url);
-					const origin = requestUrl.origin;
-					const cookie = ctx.request.headers.get("cookie") ?? "";
 
 					const model = options.model ?? "claude-sonnet-4-6";
 					const maxTokens = options.maxTokens ?? 4096;
 
-					// Build SSE stream via TransformStream
-					const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
-					const writer = writable.getWriter();
+					// Proxy to Anthropic API with streaming
+					const anthropicResponse = await fetch(ANTHROPIC_API, {
+						method: "POST",
+						headers: {
+							"x-api-key": apiKey,
+							"anthropic-version": ANTHROPIC_VERSION,
+							"content-type": "application/json",
+						},
+						body: JSON.stringify({
+							model,
+							max_tokens: maxTokens,
+							system: SYSTEM_PROMPT,
+							tools: CMS_TOOLS,
+							messages,
+							stream: true,
+						}),
+					});
 
-					const write = async (data: unknown) => {
-						await writer.write(sse(data));
-					};
+					if (!anthropicResponse.ok || !anthropicResponse.body) {
+						const errText = await anthropicResponse.text().catch(() => "Unknown error");
+						return new Response(
+							JSON.stringify({ error: `Anthropic API ${anthropicResponse.status}: ${errText}` }),
+							{
+								status: 502,
+								headers: { "Content-Type": "application/json" },
+							},
+						);
+					}
 
-					// Run agentic loop in background (Cloudflare Workers compatible)
-					void (async () => {
-						try {
-							await runAgenticLoop(messages, apiKey!, model, maxTokens, origin, cookie, write);
-							await write({ type: "done" });
-						} catch (err) {
-							const msg = err instanceof Error ? err.message : String(err);
-							await write({ type: "error", message: msg });
-							await write({ type: "done" });
-						} finally {
-							await writer.close();
-						}
-					})();
-
-					return new Response(readable, {
+					// Stream Anthropic's SSE response directly to the browser
+					return new Response(anthropicResponse.body, {
 						headers: {
 							"Content-Type": "text/event-stream",
 							"Cache-Control": "no-cache",
