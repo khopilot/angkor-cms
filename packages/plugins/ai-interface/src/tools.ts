@@ -54,7 +54,7 @@ export const CMS_TOOLS: AnthropicTool[] = [
 	{
 		name: "content_create",
 		description:
-			"Create a new content item. The 'data' object contains field values matching the collection schema (use schema_get_collection to check). Items are created as draft by default.",
+			"Create a new content item. The 'data' object contains field values matching the collection schema (use schema_get_collection to check). IMPORTANT: Items are draft by default and INVISIBLE on the website — always set status to 'published' or call content_publish after creation.",
 		input_schema: {
 			type: "object",
 			properties: {

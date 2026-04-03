@@ -9,7 +9,7 @@
  * This avoids Cloudflare Workers' self-fetch restriction.
  */
 
-import { ArrowUp, CircleNotch, Sparkle, CheckCircle, WarningCircle, Trash, ArrowClockwise } from "@phosphor-icons/react";
+import { ArrowUp, CircleNotch, Sparkle, CheckCircle, WarningCircle, ArrowClockwise, Globe, ArrowSquareOut } from "@phosphor-icons/react";
 import type { PluginAdminExports } from "emdash";
 import { apiFetch } from "emdash/plugin-utils";
 import * as React from "react";
@@ -472,12 +472,12 @@ async function parseAnthropicStream(
 // ── Quick Actions ─────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
-	{ label: "Write a blog post", prompt: "Write and create a blog post about the latest trends in our industry. Make it engaging and informative." },
-	{ label: "Show site structure", prompt: "List all collections with their fields so I can understand the site schema." },
-	{ label: "Generate a full site", prompt: "Help me set up a complete site structure: create the collections, fields, categories, and a navigation menu for a professional services website." },
-	{ label: "Create a new collection", prompt: "Create a new content collection for team members with fields for name, role, bio, photo, and social links." },
-	{ label: "Check site settings", prompt: "Show me the current site settings and list all menus." },
-	{ label: "Manage content", prompt: "List all content across all collections with their status (draft/published)." },
+	{ label: "Build my website", prompt: "Help me build a complete website from scratch. Ask me what kind of site I want, then create the collections, fields, navigation menu, and sample content — and publish everything so it's live immediately." },
+	{ label: "Write & publish a post", prompt: "Write a blog post about the latest trends in our industry. Make it engaging, then publish it so it appears on the live website." },
+	{ label: "Set up site structure", prompt: "Show me the current site structure (collections and fields), then help me improve it based on best practices." },
+	{ label: "Add a new section", prompt: "Create a new content collection for my website (e.g., services, team, testimonials, portfolio). Add the right fields and publish some sample content." },
+	{ label: "Update site settings", prompt: "Show me the current site settings (title, tagline) and help me update them." },
+	{ label: "View all content", prompt: "List all published content across all collections so I can see what's on my website right now." },
 ];
 
 // ── Tool Event Badge ──────────────────────────────────────────────────────────
@@ -915,20 +915,32 @@ function ChatPage() {
 					</div>
 					<div>
 						<h1 className="text-xl font-semibold">Token Press AI</h1>
-						<p className="text-sm text-muted-foreground">Manage your entire site with AI</p>
+						<p className="text-sm text-muted-foreground">Build your website with AI</p>
 					</div>
 				</div>
-				{messages.length > 0 && (
-					<button
-						onClick={clearConversation}
-						disabled={isStreaming}
-						className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-						title="New conversation"
+				<div className="flex items-center gap-2">
+					<a
+						href="/"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
 					>
-						<ArrowClockwise className="h-3.5 w-3.5" />
-						New chat
-					</button>
-				)}
+						<Globe className="h-3.5 w-3.5" />
+						View website
+						<ArrowSquareOut className="h-3 w-3" />
+					</a>
+					{messages.length > 0 && (
+						<button
+							onClick={clearConversation}
+							disabled={isStreaming}
+							className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+							title="New conversation"
+						>
+							<ArrowClockwise className="h-3.5 w-3.5" />
+							New chat
+						</button>
+					)}
+				</div>
 			</div>
 
 			{/* Messages */}
@@ -940,9 +952,9 @@ function ChatPage() {
 								<Sparkle className="h-7 w-7 text-white" weight="fill" />
 							</div>
 							<div>
-								<h2 className="text-2xl font-bold">How can I help?</h2>
+								<h2 className="text-2xl font-bold">Build your website</h2>
 								<p className="text-muted-foreground mt-1 max-w-md">
-									I can create content, set up your site structure, manage menus, moderate comments, configure settings — anything your CMS can do.
+									Tell me what kind of website you want. I'll create the structure, write the content, build the menus, and publish everything — your site updates in real time.
 								</p>
 							</div>
 						</div>
