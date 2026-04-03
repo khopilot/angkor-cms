@@ -308,11 +308,20 @@ function usePageContext(): PageContext | null {
 
 // ── Quick Actions (context-aware) ─────────────────────────────────────────────
 
+const ONBOARDING_ACTIONS = [
+	{ label: "Business / Agency", prompt: "Build me a professional business website with services, team, testimonials, and case studies. Make it modern and impressive. Publish everything." },
+	{ label: "Restaurant / Cafe", prompt: "Build me a restaurant website with our menu, opening hours, location, and customer reviews. Warm and inviting design. Publish everything." },
+	{ label: "Portfolio / Freelancer", prompt: "Build me a portfolio website to showcase my work. Include projects, skills, about me, and contact sections. Clean minimal design. Publish everything." },
+	{ label: "Blog / Media", prompt: "Build me a professional blog with categories, featured posts, and an about page. Focus on readability and content. Publish everything." },
+	{ label: "Copy an existing site", prompt: "I want to build a website inspired by an existing one. Ask me for the URL and I'll share it with you." },
+	{ label: "Start from scratch", prompt: "Help me build a custom website. Ask me questions about what I need — business type, pages, features — then build it step by step." },
+];
+
 const DEFAULT_ACTIONS = [
-	{ label: "Build my website", prompt: "Help me build a complete website from scratch. Ask me what kind of site I want, then create everything and publish it." },
 	{ label: "Write & publish a post", prompt: "Write a blog post about the latest trends in our industry. Publish it so it appears on the website." },
-	{ label: "Set up site structure", prompt: "Show me the current site structure (collections and fields) and help me improve it." },
-	{ label: "Browse a website", prompt: "I want you to look at a website for inspiration. Visit https://example.com and help me build something similar." },
+	{ label: "Redesign my site", prompt: "Look at my current site structure and help me redesign it. Update the settings, add missing sections, and improve the content." },
+	{ label: "Add a new section", prompt: "Help me add a new section to my website. What kind of section would work best for my site?" },
+	{ label: "Browse for inspiration", prompt: "I want to look at a website for inspiration. Ask me for the URL." },
 ];
 
 function getQuickActions(ctx: PageContext | null): Array<{ label: string; prompt: string }> {
@@ -886,32 +895,38 @@ function ChatPage() {
 
 				{/* Messages */}
 				<div className="flex-1 overflow-y-auto px-6 py-6 min-h-0" style={{ backgroundColor: "#f9fafb" }}>
-					{messages.length === 0 && (
-						<div className="flex flex-col items-center justify-center h-full gap-8 text-center">
-							<div className="space-y-3">
-								<div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-									<Sparkle className="h-7 w-7 text-white" weight="fill" />
+					{messages.length === 0 && (() => {
+						const isOnboarding = conversations.length === 0;
+						const actions = isOnboarding ? ONBOARDING_ACTIONS : quickActions;
+						const title = isOnboarding ? "What kind of website do you want to build?" : emptyTitle;
+						const subtitle = isOnboarding
+							? "Choose a template below or describe your vision. I'll build your entire website — structure, content, design, and navigation — in minutes."
+							: "Tell me what kind of website you want. I'll create the structure, write the content, and publish everything.";
+						return (
+							<div className="flex flex-col items-center justify-center h-full gap-8 text-center">
+								<div className="space-y-3">
+									<div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+										<Sparkle className="h-7 w-7 text-white" weight="fill" />
+									</div>
+									<h2 className="text-2xl font-bold" style={{ color: "#111827" }}>{title}</h2>
+									<p style={{ color: "#6b7280" }} className="max-w-lg">{subtitle}</p>
 								</div>
-								<h2 className="text-2xl font-bold" style={{ color: "#111827" }}>{emptyTitle}</h2>
-								<p style={{ color: "#6b7280" }} className="max-w-md">
-									Tell me what kind of website you want. I'll create the structure, write the content, build the menus, and publish everything — your site updates in real time.
-								</p>
+								<div className={`grid gap-2.5 w-full max-w-2xl ${isOnboarding ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>
+									{actions.map((action) => (
+										<button
+											key={action.label}
+											onClick={() => void send(action.prompt)}
+											disabled={isStreaming}
+											className="text-left px-4 py-3.5 rounded-xl border hover:border-blue-300 transition-all text-sm disabled:opacity-50 group"
+											style={{ backgroundColor: "#ffffff", borderColor: "#e5e7eb", color: "#374151" }}
+										>
+											<span className="font-semibold group-hover:text-blue-600 transition-colors">{action.label}</span>
+										</button>
+									))}
+								</div>
 							</div>
-							<div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-2xl">
-								{quickActions.map((action) => (
-									<button
-										key={action.label}
-										onClick={() => void send(action.prompt)}
-										disabled={isStreaming}
-										className="text-left px-4 py-3 rounded-xl border hover:border-blue-300 transition-all text-sm disabled:opacity-50 group"
-										style={{ backgroundColor: "#ffffff", borderColor: "#e5e7eb", color: "#374151" }}
-									>
-										<span className="font-medium group-hover:text-blue-600 transition-colors">{action.label}</span>
-									</button>
-								))}
-							</div>
-						</div>
-					)}
+						);
+					})()}
 
 					{messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)}
 					<div ref={bottomRef} />

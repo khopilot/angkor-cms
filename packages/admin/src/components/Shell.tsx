@@ -1,12 +1,27 @@
 import * as React from "react";
 
 import { useCurrentUser } from "../lib/api/current-user";
-import { ChatDrawerProvider } from "../lib/chat-drawer-context";
+import { ChatDrawerProvider, useChatDrawer } from "../lib/chat-drawer-context";
 import { AdminCommandPalette } from "./AdminCommandPalette";
 import { ChatDrawer } from "./ChatDrawer";
 import { Header } from "./Header";
 import { Sidebar, SidebarNav } from "./Sidebar";
 import { WelcomeModal } from "./WelcomeModal";
+
+/** Auto-open AI drawer on first visit */
+function FirstVisitAutoOpen() {
+	const { open } = useChatDrawer();
+	React.useEffect(() => {
+		const key = "tp:ai-onboarded";
+		if (!localStorage.getItem(key)) {
+			localStorage.setItem(key, "1");
+			// Slight delay so the admin shell renders first
+			const timer = setTimeout(open, 800);
+			return () => clearTimeout(timer);
+		}
+	}, [open]);
+	return null;
+}
 
 export interface ShellProps {
 	children: React.ReactNode;
@@ -75,6 +90,9 @@ export function Shell({ children, manifest }: ShellProps) {
 
 				{/* Command palette for quick navigation */}
 				<AdminCommandPalette manifest={manifest} />
+
+				{/* Auto-open AI drawer on first visit */}
+				<FirstVisitAutoOpen />
 
 				{/* Global AI chat drawer — overlays on any page */}
 				<ChatDrawer />

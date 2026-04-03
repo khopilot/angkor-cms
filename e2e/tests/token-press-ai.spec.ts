@@ -31,11 +31,13 @@ test.describe("Token Press AI", () => {
 		});
 
 		test("shows quick actions in empty state", async ({ admin }) => {
-			const aiButton = admin.page.locator("button", { hasText: "AI Assistant" });
+			const aiButton = admin.page.getByText("AI Assistant", { exact: true }).first();
 			await aiButton.click();
 
-			// Should show quick action buttons
-			await expect(admin.page.locator("button", { hasText: "Build my website" })).toBeVisible({ timeout: 5000 });
+			// Should show onboarding quick actions (first visit) or default actions
+			// Look for any quick action button inside the drawer
+			const anyAction = admin.page.locator("[data-chat-drawer] button").filter({ hasText: /Business|Portfolio|Restaurant|Blog|Build|Write/ });
+			await expect(anyAction.first()).toBeVisible({ timeout: 5000 });
 		});
 
 		test("has visible input field", async ({ admin }) => {
