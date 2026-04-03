@@ -340,7 +340,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 			<div className="flex-1 min-w-0 max-w-[85%]">
 				{msg.toolEvents.length > 0 && <ToolBadges events={msg.toolEvents} />}
 				{(msg.text || msg.streaming) && (
-					<div className="rounded-2xl rounded-tl-md bg-muted/60 px-4 py-3 text-sm leading-relaxed">
+					<div className="rounded-2xl rounded-tl-md px-4 py-3 text-sm leading-relaxed" style={{ backgroundColor: "#ffffff", color: "#1f2937", border: "1px solid #e5e7eb" }}>
 						{msg.text ? renderMarkdown(msg.text) : null}
 						{msg.streaming && !msg.text && (
 							<span className="inline-flex gap-1">
@@ -407,7 +407,7 @@ function HistorySidebar({
 	}
 
 	return (
-		<div className="w-64 flex-shrink-0 border-r flex flex-col bg-muted/20">
+		<div className="w-64 flex-shrink-0 border-r flex flex-col" style={{ backgroundColor: "#f3f4f6", borderColor: "#e5e7eb" }}>
 			<div className="p-3 border-b flex items-center justify-between">
 				<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">History</span>
 				<div className="flex items-center gap-1">
@@ -654,16 +654,16 @@ function ChatPage() {
 			/>
 
 			{/* Chat area */}
-			<div className="flex-1 flex flex-col min-w-0">
+			<div className="flex-1 flex flex-col min-w-0" style={{ color: "#1a1a2e" }}>
 				{/* Header */}
-				<div className="flex items-center justify-between px-6 py-3 border-b bg-background/80 backdrop-blur-sm">
+				<div className="flex items-center justify-between px-6 py-3 border-b" style={{ backgroundColor: "#ffffff", borderColor: "#e5e7eb" }}>
 					<div className="flex items-center gap-3">
 						<div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
 							<Sparkle className="h-4 w-4 text-white" weight="fill" />
 						</div>
 						<div>
-							<h1 className="text-base font-semibold">Token Press AI</h1>
-							<p className="text-[11px] text-muted-foreground">Build your website with AI</p>
+							<h1 className="text-base font-semibold" style={{ color: "#111827" }}>Token Press AI</h1>
+							<p className="text-[11px]" style={{ color: "#6b7280" }}>Build your website with AI</p>
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
@@ -677,7 +677,7 @@ function ChatPage() {
 							View website
 							<ArrowSquareOut className="h-3 w-3 opacity-70" />
 						</a>
-						<button onClick={newChat} disabled={isStreaming} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50">
+						<button onClick={newChat} disabled={isStreaming} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-50" style={{ color: "#6b7280" }}>
 							<ArrowClockwise className="h-3.5 w-3.5" />
 							New chat
 						</button>
@@ -685,15 +685,15 @@ function ChatPage() {
 				</div>
 
 				{/* Messages */}
-				<div className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
+				<div className="flex-1 overflow-y-auto px-6 py-6 min-h-0" style={{ backgroundColor: "#f9fafb" }}>
 					{messages.length === 0 && (
 						<div className="flex flex-col items-center justify-center h-full gap-8 text-center">
 							<div className="space-y-3">
 								<div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
 									<Sparkle className="h-7 w-7 text-white" weight="fill" />
 								</div>
-								<h2 className="text-2xl font-bold">Build your website</h2>
-								<p className="text-muted-foreground max-w-md">
+								<h2 className="text-2xl font-bold" style={{ color: "#111827" }}>Build your website</h2>
+								<p style={{ color: "#6b7280" }} className="max-w-md">
 									Tell me what kind of website you want. I'll create the structure, write the content, build the menus, and publish everything — your site updates in real time.
 								</p>
 							</div>
@@ -703,9 +703,10 @@ function ChatPage() {
 										key={action.label}
 										onClick={() => void send(action.prompt)}
 										disabled={isStreaming}
-										className="text-left px-4 py-3 rounded-xl border border-border/60 hover:bg-muted hover:border-blue-200 dark:hover:border-blue-800 transition-all text-sm disabled:opacity-50 group"
+										className="text-left px-4 py-3 rounded-xl border hover:border-blue-300 transition-all text-sm disabled:opacity-50 group"
+										style={{ backgroundColor: "#ffffff", borderColor: "#e5e7eb", color: "#374151" }}
 									>
-										<span className="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{action.label}</span>
+										<span className="font-medium group-hover:text-blue-600 transition-colors">{action.label}</span>
 									</button>
 								))}
 							</div>
@@ -717,8 +718,8 @@ function ChatPage() {
 				</div>
 
 				{/* Input */}
-				<div className="px-6 pb-4 pt-2 border-t bg-background/80 backdrop-blur-sm">
-					<div className="flex items-end gap-2 rounded-xl border border-border bg-card shadow-sm p-2 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-300 dark:focus-within:border-blue-700">
+				<div className="px-6 pb-4 pt-3 border-t" style={{ backgroundColor: "#ffffff", borderColor: "#e5e7eb" }}>
+					<div className="flex items-end gap-2 rounded-xl border shadow-sm p-2 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400" style={{ backgroundColor: "#f9fafb", borderColor: "#d1d5db" }}>
 						<textarea
 							ref={textareaRef}
 							value={input}
@@ -727,7 +728,8 @@ function ChatPage() {
 							placeholder="Describe what you want to build..."
 							rows={1}
 							disabled={isStreaming}
-							className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50 max-h-40"
+							className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none disabled:opacity-50 max-h-40"
+							style={{ color: "#111827" }}
 						/>
 						{isStreaming ? (
 							<button onClick={() => abortRef.current?.abort()} className="flex-shrink-0 h-8 w-8 rounded-lg bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors" title="Stop">
@@ -739,7 +741,7 @@ function ChatPage() {
 							</button>
 						)}
 					</div>
-					<p className="text-center text-[10px] text-muted-foreground/60 mt-2">
+					<p className="text-center text-[10px] mt-2" style={{ color: "#9ca3af" }}>
 						Powered by Claude &middot; Token Press by Angkor AI
 					</p>
 				</div>
