@@ -18,8 +18,17 @@ import { definePlugin } from "emdash";
 import type { AIInterfaceOptions } from "./descriptor.js";
 import { CMS_TOOLS } from "./tools.js";
 
-const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
+
+/** Auto-detect provider from API key format */
+function resolveProvider(apiKey: string): { baseUrl: string; model: string } {
+	if (apiKey.startsWith("sk-api-")) {
+		// MiniMax — Anthropic-compatible API
+		return { baseUrl: "https://api.minimax.io/anthropic/v1/messages", model: "MiniMax-M2.7" };
+	}
+	// Default: Anthropic
+	return { baseUrl: "https://api.anthropic.com/v1/messages", model: "claude-sonnet-4-6" };
+}
 
 const SYSTEM_PROMPT = `You are Token Press AI — you help users BUILD and MANAGE their website through conversation (powered by Angkor AI).
 
@@ -74,7 +83,7 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 		id: "ai-interface",
 		version: "0.2.0",
 		capabilities: [],
-		allowedHosts: ["api.anthropic.com"],
+		allowedHosts: ["api.anthropic.com", "api.minimax.io"],
 
 		admin: {
 			entry: "@angkor-cms/plugin-ai-interface/admin",
@@ -154,10 +163,11 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 						systemPrompt += ctx_prompt;
 					}
 
-					const model = options.model ?? "claude-sonnet-4-6";
+					const provider = resolveProvider(apiKey);
+					const model = options.model ?? provider.model;
 					const maxTokens = options.maxTokens ?? 4096;
 
-					const anthropicResponse = await fetch(ANTHROPIC_API, {
+					const anthropicResponse = await fetch(provider.baseUrl, {
 						method: "POST",
 						headers: {
 							"x-api-key": apiKey,
