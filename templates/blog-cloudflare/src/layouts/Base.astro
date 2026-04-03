@@ -40,8 +40,10 @@ const siteTitle = "Token Press";
 // If title already includes site title (from getSeoMeta), use as-is
 const fullTitle = title.includes(siteTitle) ? title : `${title} — ${siteTitle}`;
 
-// Fetch primary menu defined in seed
-const menu = await getMenu("primary");
+// Fetch primary menu — try common names the AI might use
+let menu = await getMenu("primary");
+if (!menu?.items?.length) menu = await getMenu("main");
+if (!menu?.items?.length) menu = await getMenu("primary-navigation");
 
 // Fetch pages for footer
 const { entries: pages } = await getEmDashCollection("pages");
