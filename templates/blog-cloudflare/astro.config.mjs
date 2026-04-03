@@ -4,6 +4,7 @@ import { d1, r2, sandbox } from "@emdash-cms/cloudflare";
 import { formsPlugin } from "@emdash-cms/plugin-forms";
 import { webhookNotifierPlugin } from "@emdash-cms/plugin-webhook-notifier";
 import { aiInterfacePlugin } from "@angkor-cms/plugin-ai-interface";
+import { siteDeployerPlugin } from "@token-press/plugin-site-deployer";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
 
@@ -19,7 +20,7 @@ export default defineConfig({
 		emdash({
 			database: d1({ binding: "DB", session: "auto" }),
 			storage: r2({ binding: "MEDIA" }),
-			plugins: [formsPlugin(), aiInterfacePlugin()],
+			plugins: [formsPlugin(), aiInterfacePlugin(), siteDeployerPlugin()],
 			sandboxed: [webhookNotifierPlugin()],
 			sandboxRunner: sandbox(),
 			marketplace: "https://marketplace.emdashcms.com",

@@ -17,6 +17,7 @@
 		"@astrojs/react": "catalog:",
 		"@emdash-cms/cloudflare": "workspace:*",
 		"@angkor-cms/plugin-ai-interface": "workspace:*",
+		"@token-press/plugin-site-deployer": "workspace:*",
 		"@emdash-cms/plugin-forms": "workspace:*",
 		"@emdash-cms/plugin-webhook-notifier": "workspace:*",
 		"astro": "catalog:",

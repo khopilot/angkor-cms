@@ -120,6 +120,11 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 		case "widget_add": { const { area, type, title, content, menuName, componentId } = toolInput; response = await post(`/_emdash/api/widget-areas/${area}/widgets`, { type, title, content, menuName, componentId }); break; }
 		case "widget_delete": { const { area, widgetId } = toolInput; response = await del(`/_emdash/api/widget-areas/${area}/widgets/${widgetId}`); break; }
 		case "web_browse": { const { url } = toolInput; response = await apiFetch(`${API_BASE}/browse`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }); break; }
+		case "site_get_config": { response = await get("/_emdash/api/plugins/site-deployer/config"); break; }
+		case "site_set_config": { response = await post("/_emdash/api/plugins/site-deployer/config/save", toolInput); break; }
+		case "site_deploy": { response = await post("/_emdash/api/plugins/site-deployer/deploy"); break; }
+		case "site_status": { response = await get("/_emdash/api/plugins/site-deployer/status"); break; }
+		case "site_set_domain": { const { domain } = toolInput; response = await post("/_emdash/api/plugins/site-deployer/domain/set", { domain }); break; }
 		default: return { error: `Unknown tool: ${toolName}` };
 	}
 

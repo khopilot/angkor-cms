@@ -760,4 +760,48 @@ export const CMS_TOOLS: AnthropicTool[] = [
 			required: ["url"],
 		},
 	},
+
+	// ── Site Deployment ───────────────────────────────────────────────────────
+	{
+		name: "site_get_config",
+		description: "Get the current site configuration (theme, sections, hero, nav, footer, SEO).",
+		input_schema: { type: "object", properties: {} },
+	},
+	{
+		name: "site_set_config",
+		description: "Update site configuration. Merge-updates: only include fields you want to change. Controls theme colors, fonts, which sections are shown, hero style, nav, footer, SEO.",
+		input_schema: {
+			type: "object",
+			properties: {
+				site: { type: "object", description: "{ name, tagline, locale }", additionalProperties: true },
+				theme: { type: "object", description: "{ primary, secondary, accent, background, font: { heading, body }, darkMode }", additionalProperties: true },
+				hero: { type: "object", description: "{ style, ctaText, ctaUrl, gradient: { from, via, to } }", additionalProperties: true },
+				sections: { type: "object", description: "{ hero: true, services: true, team: false, ... }", additionalProperties: true },
+				nav: { type: "object", description: "{ style: 'solid'|'transparent', menuName }", additionalProperties: true },
+				footer: { type: "object", description: "{ showWidgets, copyright, showPoweredBy }", additionalProperties: true },
+				seo: { type: "object", description: "{ titleTemplate, defaultDescription }", additionalProperties: true },
+			},
+		},
+	},
+	{
+		name: "site_deploy",
+		description: "Deploy the website to Cloudflare Pages. Creates a Pages project and makes the site live at {name}.pages.dev.",
+		input_schema: { type: "object", properties: {} },
+	},
+	{
+		name: "site_status",
+		description: "Get the current deployment status (deploying, ready, error, not_deployed).",
+		input_schema: { type: "object", properties: {} },
+	},
+	{
+		name: "site_set_domain",
+		description: "Configure a custom domain for the deployed site.",
+		input_schema: {
+			type: "object",
+			properties: {
+				domain: { type: "string", description: "Custom domain (e.g. 'mysite.com')" },
+			},
+			required: ["domain"],
+		},
+	},
 ];
