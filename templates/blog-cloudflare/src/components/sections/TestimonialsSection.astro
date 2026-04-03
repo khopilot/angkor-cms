@@ -1,0 +1,43 @@
+---
+interface Props {
+	testimonials: Array<{ data: Record<string, unknown>; id: string }>;
+	title?: string;
+}
+const { testimonials, title = "What Our Clients Say" } = Astro.props;
+---
+<section class="testimonials-section">
+	<div class="testimonials-inner">
+		<h2 class="testimonials-title">{title}</h2>
+		<div class="testimonials-grid">
+			{testimonials.map((t) => (
+				<div class="testimonial-card">
+					<div class="testimonial-quote">"</div>
+					<p class="testimonial-text">{String(t.data.quote || t.data.content || t.data.body || "")}</p>
+					<div class="testimonial-author">
+						<div class="testimonial-avatar">{String(t.data.author_name || t.data.name || "A").charAt(0)}</div>
+						<div>
+							<div class="testimonial-name">{String(t.data.author_name || t.data.name || "")}</div>
+							<div class="testimonial-role">
+								{String(t.data.author_role || t.data.role || "")}
+								{t.data.author_company ? ` at ${String(t.data.author_company)}` : ""}
+							</div>
+						</div>
+					</div>
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+<style>
+	.testimonials-section { padding: 5rem 1.5rem; background: #f8fafc; }
+	.testimonials-inner { max-width: 72rem; margin: 0 auto; }
+	.testimonials-title { font-size: 2rem; font-weight: 700; text-align: center; color: #111827; margin-bottom: 3rem; }
+	.testimonials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+	.testimonial-card { padding: 2rem; border-radius: 1rem; background: #fff; border: 1px solid #e5e7eb; position: relative; }
+	.testimonial-quote { position: absolute; top: 1rem; right: 1.5rem; font-size: 4rem; font-weight: 700; color: #dbeafe; line-height: 1; font-family: Georgia, serif; }
+	.testimonial-text { color: #374151; font-size: 0.95rem; line-height: 1.7; margin-bottom: 1.5rem; font-style: italic; position: relative; }
+	.testimonial-author { display: flex; align-items: center; gap: 0.75rem; }
+	.testimonial-avatar { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #6366f1); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1rem; }
+	.testimonial-name { font-weight: 600; color: #111827; font-size: 0.9rem; }
+	.testimonial-role { color: #6b7280; font-size: 0.8rem; }
+</style>

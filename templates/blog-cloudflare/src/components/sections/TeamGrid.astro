@@ -1,0 +1,34 @@
+---
+interface Props {
+	members: Array<{ data: Record<string, unknown>; id: string }>;
+	title?: string;
+}
+const { members, title = "Meet Our Team" } = Astro.props;
+---
+<section class="team-section">
+	<div class="team-inner">
+		<h2 class="team-title">{title}</h2>
+		<div class="team-grid">
+			{members.map((m) => (
+				<div class="team-card">
+					<div class="team-avatar">{String(m.data.name || "?").charAt(0)}</div>
+					<h3 class="team-name">{String(m.data.name || m.data.title || "")}</h3>
+					<p class="team-role">{String(m.data.role || m.data.position || "")}</p>
+					{m.data.bio && <p class="team-bio">{String(m.data.bio).slice(0, 120)}{String(m.data.bio).length > 120 ? "..." : ""}</p>}
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+<style>
+	.team-section { padding: 5rem 1.5rem; background: #fff; }
+	.team-inner { max-width: 72rem; margin: 0 auto; }
+	.team-title { font-size: 2rem; font-weight: 700; text-align: center; color: #111827; margin-bottom: 3rem; }
+	.team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2rem; }
+	.team-card { text-align: center; padding: 2rem 1.5rem; border-radius: 1rem; border: 1px solid #f3f4f6; transition: all 0.25s; }
+	.team-card:hover { border-color: #dbeafe; box-shadow: 0 8px 30px rgba(59,130,246,0.06); }
+	.team-avatar { width: 4.5rem; height: 4.5rem; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: 700; margin: 0 auto 1rem; }
+	.team-name { font-weight: 600; font-size: 1.05rem; color: #111827; margin-bottom: 0.25rem; }
+	.team-role { color: #3b82f6; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.75rem; }
+	.team-bio { color: #6b7280; font-size: 0.8rem; line-height: 1.5; }
+</style>

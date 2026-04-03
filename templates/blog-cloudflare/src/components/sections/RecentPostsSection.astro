@@ -1,0 +1,41 @@
+---
+import PostCard from "../PostCard.astro";
+import { getReadingTime } from "../../utils/reading-time";
+
+interface Props {
+	posts: Array<{ data: Record<string, unknown>; id: string }>;
+	title?: string;
+}
+const { posts, title = "Latest Posts" } = Astro.props;
+---
+<section class="recent-posts-section">
+	<div class="recent-posts-inner">
+		<div class="recent-posts-header">
+			<h2 class="recent-posts-title">{title}</h2>
+			<a href="/posts" class="recent-posts-link">View all &rarr;</a>
+		</div>
+		<div class="recent-posts-grid">
+			{posts.map((post) => (
+				<PostCard
+					title={String(post.data.title ?? "Untitled")}
+					excerpt={post.data.excerpt as string | undefined}
+					featuredImage={post.data.featured_image as { src: string; alt?: string } | undefined}
+					href={`/posts/${post.id}`}
+					date={(post.data.publishedAt as Date) ?? undefined}
+					readingTime={getReadingTime(post.data.content)}
+				/>
+			))}
+		</div>
+	</div>
+</section>
+<style>
+	.recent-posts-section { padding: 5rem 1.5rem; background: #fff; }
+	.recent-posts-inner { max-width: 72rem; margin: 0 auto; }
+	.recent-posts-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #f3f4f6; }
+	.recent-posts-title { font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; }
+	.recent-posts-link { font-size: 0.85rem; color: #3b82f6; text-decoration: none; }
+	.recent-posts-link:hover { text-decoration: underline; }
+	.recent-posts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+	@media (max-width: 900px) { .recent-posts-grid { grid-template-columns: repeat(2, 1fr); } }
+	@media (max-width: 600px) { .recent-posts-grid { grid-template-columns: 1fr; } }
+</style>

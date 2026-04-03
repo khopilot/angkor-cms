@@ -1,0 +1,24 @@
+---
+interface Props {
+	title?: string;
+	subtitle?: string;
+	ctaText?: string;
+	ctaUrl?: string;
+}
+const { title = "Ready to get started?", subtitle = "Let's build something great together.", ctaText = "Contact Us", ctaUrl = "/contact" } = Astro.props;
+---
+<section class="cta-section">
+	<div class="cta-inner">
+		<h2 class="cta-title">{title}</h2>
+		{subtitle && <p class="cta-subtitle">{subtitle}</p>}
+		<a href={ctaUrl} class="cta-button">{ctaText} &rarr;</a>
+	</div>
+</section>
+<style>
+	.cta-section { padding: 5rem 1.5rem; background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%); text-align: center; }
+	.cta-inner { max-width: 40rem; margin: 0 auto; }
+	.cta-title { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; }
+	.cta-subtitle { color: #c7d2fe; font-size: 1.1rem; margin-bottom: 2rem; }
+	.cta-button { display: inline-flex; padding: 0.875rem 2.5rem; background: #fff; color: #1e40af; font-weight: 600; border-radius: 0.5rem; text-decoration: none; font-size: 1rem; transition: all 0.2s; box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
+	.cta-button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+</style>

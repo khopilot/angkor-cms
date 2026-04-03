@@ -1,0 +1,41 @@
+---
+interface Props {
+	studies: Array<{ data: Record<string, unknown>; id: string }>;
+	title?: string;
+}
+const { studies, title = "Case Studies" } = Astro.props;
+---
+<section class="cases-section">
+	<div class="cases-inner">
+		<h2 class="cases-title">{title}</h2>
+		<div class="cases-grid">
+			{studies.map((s) => (
+				<div class="case-card">
+					<div class="case-client">{String(s.data.client || s.data.company || "")}</div>
+					<h3 class="case-name">{String(s.data.title || s.data.name || "")}</h3>
+					<p class="case-desc">{String(s.data.description || s.data.excerpt || "")}</p>
+					{s.data.results && (
+						<div class="case-results">
+							<span class="case-results-label">Results</span>
+							<span class="case-results-value">{String(s.data.results)}</span>
+						</div>
+					)}
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+<style>
+	.cases-section { padding: 5rem 1.5rem; background: #f8fafc; }
+	.cases-inner { max-width: 72rem; margin: 0 auto; }
+	.cases-title { font-size: 2rem; font-weight: 700; text-align: center; color: #111827; margin-bottom: 3rem; }
+	.cases-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem; }
+	.case-card { padding: 2rem; border-radius: 1rem; background: #fff; border: 1px solid #e5e7eb; transition: all 0.25s; border-top: 4px solid #3b82f6; }
+	.case-card:hover { box-shadow: 0 10px 40px rgba(0,0,0,0.06); transform: translateY(-2px); }
+	.case-client { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #3b82f6; margin-bottom: 0.5rem; }
+	.case-name { font-size: 1.15rem; font-weight: 600; color: #111827; margin-bottom: 0.75rem; }
+	.case-desc { color: #6b7280; font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.25rem; }
+	.case-results { padding: 0.75rem 1rem; border-radius: 0.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; }
+	.case-results-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #16a34a; display: block; margin-bottom: 0.25rem; }
+	.case-results-value { font-size: 0.85rem; color: #166534; font-weight: 500; }
+</style>
