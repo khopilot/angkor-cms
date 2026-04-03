@@ -50,9 +50,11 @@ export function ChatDrawer() {
 			{/* Drawer panel — mounted after first open, hidden when closed */}
 			{hasOpened && (
 				<div
-					className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl flex flex-col shadow-2xl transition-transform duration-200"
+					className="fixed inset-y-0 right-0 z-50 flex flex-col shadow-2xl transition-transform duration-200"
+					data-chat-drawer
 					style={{
 						backgroundColor: "#ffffff",
+						width: "min(95vw, 90rem)",
 						transform: isOpen ? "translateX(0)" : "translateX(100%)",
 					}}
 				>

@@ -647,6 +647,9 @@ function ChatPage() {
 	const [conversationId, setConversationId] = React.useState<string>(uid());
 	const [conversations, setConversations] = React.useState<ConversationMeta[]>([]);
 	const [historyOpen, setHistoryOpen] = React.useState(true);
+	const [showPreview, setShowPreview] = React.useState(false);
+	const [previewKey, setPreviewKey] = React.useState(0);
+	const iframeRef = React.useRef<HTMLIFrameElement>(null);
 	const bottomRef = React.useRef<HTMLDivElement>(null);
 	const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 	const abortRef = React.useRef<AbortController | null>(null);
@@ -742,6 +745,8 @@ function ChatPage() {
 			abortRef.current = null;
 			// Save after response completes
 			setMessages((finalMsgs) => { void saveConversation(finalMsgs, conversationId); return finalMsgs; });
+			// Auto-refresh preview after AI finishes
+			if (showPreview) setPreviewKey((k) => k + 1);
 		}
 	};
 
@@ -854,19 +859,27 @@ function ChatPage() {
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
+						<button
+							onClick={() => setShowPreview(!showPreview)}
+							className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shadow-sm"
+							style={showPreview ? { background: "#2563eb", color: "#fff" } : { background: "#eff6ff", color: "#2563eb" }}
+						>
+							<Globe className="h-3.5 w-3.5" />
+							{showPreview ? "Hide Preview" : "Preview"}
+						</button>
 						<a
 							href="/"
 							target="_blank"
 							rel="noopener noreferrer"
-							className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
+							className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
+							style={{ color: "#6b7280" }}
 						>
-							<Globe className="h-3.5 w-3.5" />
-							View website
-							<ArrowSquareOut className="h-3 w-3 opacity-70" />
+							<ArrowSquareOut className="h-3.5 w-3.5" />
+							Open site
 						</a>
 						<button onClick={newChat} disabled={isStreaming} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-50" style={{ color: "#6b7280" }}>
 							<ArrowClockwise className="h-3.5 w-3.5" />
-							New chat
+							New
 						</button>
 					</div>
 				</div>
@@ -933,6 +946,40 @@ function ChatPage() {
 					</p>
 				</div>
 			</div>
+
+			{/* ── Live Preview Panel ── */}
+			{showPreview && (
+				<div className="flex flex-col border-l" style={{ width: "50%", minWidth: "320px", borderColor: "#e5e7eb" }}>
+					<div className="flex items-center justify-between px-3 py-2 border-b" style={{ backgroundColor: "#f9fafb", borderColor: "#e5e7eb" }}>
+						<div className="flex items-center gap-2">
+							<div className="flex gap-1">
+								<span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+								<span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+								<span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
+							</div>
+							<span className="text-[11px] font-mono" style={{ color: "#9ca3af" }}>
+								{typeof window !== "undefined" ? window.location.origin : ""}
+							</span>
+						</div>
+						<button
+							onClick={() => setPreviewKey((k) => k + 1)}
+							className="p-1 rounded transition-colors"
+							style={{ color: "#6b7280" }}
+							title="Refresh preview"
+						>
+							<ArrowClockwise className="h-3.5 w-3.5" />
+						</button>
+					</div>
+					<iframe
+						ref={iframeRef}
+						key={previewKey}
+						src="/"
+						className="flex-1 w-full border-0"
+						style={{ backgroundColor: "#fff" }}
+						title="Website Preview"
+					/>
+				</div>
+			)}
 		</div>
 	);
 }
