@@ -346,10 +346,21 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 						to="/"
 						className="emdash-brand-link flex w-full min-w-0 items-center gap-2 px-3 py-1"
 					>
-						<span className="text-base shrink-0" aria-hidden="true">
-							—
-						</span>
-						<span className="emdash-brand-text font-semibold truncate">EmDash</span>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="22" height="22" className="shrink-0" aria-hidden="true">
+							<defs>
+								<path id="sb-p6" d="M 0 -150 C -92 -214  -156 -332   0 -430 C 156 -332   92 -214   0 -150" />
+							</defs>
+							<g transform="translate(500 500)" fill="none" stroke="currentColor" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round">
+								<use href="#sb-p6" transform="rotate(0)"/>
+								<use href="#sb-p6" transform="rotate(60)"/>
+								<use href="#sb-p6" transform="rotate(120)"/>
+								<use href="#sb-p6" transform="rotate(180)"/>
+								<use href="#sb-p6" transform="rotate(240)"/>
+								<use href="#sb-p6" transform="rotate(300)"/>
+							</g>
+							<circle cx="500" cy="500" r="52" fill="currentColor"/>
+						</svg>
+						<span className="emdash-brand-text font-semibold truncate">Angkor AI</span>
 					</Link>
 				</KumoSidebar.Header>
 
@@ -418,7 +429,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 
 				<KumoSidebar.Footer>
 					<p className="emdash-nav-label px-3 py-2 text-[11px] text-white/30">
-						EmDash CMS v{manifest.version || "0.0.0"}
+						Angkor AI v{manifest.version || "0.0.0"}
 					</p>
 				</KumoSidebar.Footer>
 			</KumoSidebar>

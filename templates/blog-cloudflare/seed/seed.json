@@ -4,12 +4,12 @@
 	"meta": {
 		"name": "Blog Starter",
 		"description": "A blog with posts and pages",
-		"author": "EmDash"
+		"author": "Angkor AI"
 	},
 
 	"settings": {
-		"title": "My Blog",
-		"tagline": "Thoughts on building for the web"
+		"title": "Angkor AI",
+		"tagline": "Insights on AI, technology and innovation"
 	},
 
 	"collections": [
@@ -99,8 +99,8 @@
 	"bylines": [
 		{
 			"id": "byline-editorial",
-			"slug": "emdash-editorial",
-			"displayName": "EmDash Editorial"
+			"slug": "angkor-editorial",
+			"displayName": "Angkor AI Editorial"
 		},
 		{
 			"id": "byline-guest",
@@ -259,7 +259,7 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Built with Astro and EmDash. The source is open if you want to see how it works."
+									"text": "Built with Astro and Angkor AI. Powering the next generation of AI-driven content."
 								}
 							]
 						}

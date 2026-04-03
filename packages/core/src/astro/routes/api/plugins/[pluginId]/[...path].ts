@@ -81,6 +81,11 @@ const handleRequest: APIRoute = async ({ params, request, locals }) => {
 		return apiError(code, message, status);
 	}
 
+	// Plugin handlers can return a raw Response (e.g. SSE streams) — pass through directly.
+	if (result.data instanceof Response) {
+		return result.data;
+	}
+
 	return apiSuccess(result.data);
 };
 
