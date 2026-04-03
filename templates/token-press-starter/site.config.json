@@ -1,0 +1,75 @@
+{
+  "$schema": "./site-config.schema.json",
+
+  "site": {
+    "name": "My Website",
+    "tagline": "Built with Token Press",
+    "locale": "en",
+    "url": ""
+  },
+
+  "cms": {
+    "apiUrl": "/_emdash/api",
+    "apiToken": ""
+  },
+
+  "theme": {
+    "primary": "#2563eb",
+    "secondary": "#7c3aed",
+    "accent": "#f59e0b",
+    "background": "#ffffff",
+    "surface": "#f8fafc",
+    "text": "#111827",
+    "textMuted": "#6b7280",
+    "font": {
+      "heading": "Inter, system-ui, sans-serif",
+      "body": "Inter, system-ui, sans-serif"
+    },
+    "borderRadius": "1rem",
+    "darkMode": false
+  },
+
+  "hero": {
+    "style": "gradient",
+    "gradient": {
+      "from": "#0f172a",
+      "via": "#1e3a8a",
+      "to": "#312e81"
+    },
+    "ctaText": "Get Started",
+    "ctaUrl": "/contact",
+    "secondaryCtaText": "Learn More",
+    "secondaryCtaUrl": "/about"
+  },
+
+  "sections": {
+    "hero": true,
+    "services": true,
+    "caseStudies": true,
+    "testimonials": true,
+    "team": true,
+    "faq": true,
+    "pricing": false,
+    "stats": false,
+    "contact": true,
+    "blog": true,
+    "cta": true
+  },
+
+  "nav": {
+    "style": "solid",
+    "menuName": "primary"
+  },
+
+  "footer": {
+    "showWidgets": true,
+    "copyright": "© {year} {siteName}. All rights reserved.",
+    "showPoweredBy": true
+  },
+
+  "seo": {
+    "titleTemplate": "{title} — {siteName}",
+    "defaultDescription": "",
+    "ogImage": ""
+  }
+}

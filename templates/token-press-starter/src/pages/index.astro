@@ -1,0 +1,116 @@
+---
+/**
+ * Token Press Homepage — Config-Driven Dynamic Sections
+ *
+ * Reads site.config.json to determine which sections to show.
+ * The AI modifies site.config.json to customize the site.
+ * Collections are loaded dynamically — if they exist, their section renders.
+ */
+import { getEmDashCollection } from "emdash";
+import { Image } from "emdash/ui";
+import Base from "../layouts/Base.astro";
+import { config, isSectionEnabled, getThemeCSS } from "../lib/config";
+
+// Section components
+import HeroSection from "../components/sections/HeroSection.astro";
+import ServicesGrid from "../components/sections/ServicesGrid.astro";
+import TestimonialsSection from "../components/sections/TestimonialsSection.astro";
+import TeamGrid from "../components/sections/TeamGrid.astro";
+import CaseStudiesGrid from "../components/sections/CaseStudiesGrid.astro";
+import CTASection from "../components/sections/CTASection.astro";
+import RecentPostsSection from "../components/sections/RecentPostsSection.astro";
+import FAQSection from "../components/sections/FAQSection.astro";
+import ContactSection from "../components/sections/ContactSection.astro";
+
+// ── Load collections dynamically ──
+type Entry = { data: Record<string, unknown>; id: string };
+
+async function loadCollection(name: string): Promise<Entry[]> {
+	try {
+		const result = await getEmDashCollection(name);
+		return result.entries as Entry[];
+	} catch {
+		return [];
+	}
+}
+
+const services = isSectionEnabled("services") ? await loadCollection("services") : [];
+const team = isSectionEnabled("team") ? await loadCollection("team") : [];
+const testimonials = isSectionEnabled("testimonials") ? await loadCollection("testimonials") : [];
+const caseStudies = isSectionEnabled("caseStudies") ? await loadCollection("case_studies") : [];
+const faqs = isSectionEnabled("faq") ? await loadCollection("faq") : [];
+
+const { entries: rawPosts, cacheHint } = await getEmDashCollection("posts");
+Astro.cache.set(cacheHint);
+const posts = rawPosts as Entry[];
+const sortedPosts = posts.toSorted((a, b) => {
+	const dateA = (a.data.publishedAt as Date)?.getTime?.() ?? 0;
+	const dateB = (b.data.publishedAt as Date)?.getTime?.() ?? 0;
+	return dateB - dateA;
+});
+
+const hasContent = services.length > 0 || team.length > 0 || testimonials.length > 0 || caseStudies.length > 0;
+---
+
+<Base title={config.site.name} description={config.site.tagline}>
+	<style set:html={getThemeCSS()} is:global></style>
+
+	{isSectionEnabled("hero") && (
+		<HeroSection
+			title={config.site.name}
+			subtitle={config.site.tagline}
+			ctaText={config.hero.ctaText}
+			ctaUrl={config.hero.ctaUrl}
+			secondaryCtaText={config.hero.secondaryCtaText}
+			secondaryCtaUrl={config.hero.secondaryCtaUrl}
+		/>
+	)}
+
+	{services.length > 0 && <ServicesGrid services={services} />}
+
+	{caseStudies.length > 0 && <CaseStudiesGrid studies={caseStudies} />}
+
+	{testimonials.length > 0 && <TestimonialsSection testimonials={testimonials} />}
+
+	{team.length > 0 && <TeamGrid members={team} />}
+
+	{faqs.length > 0 && <FAQSection faqs={faqs} />}
+
+	{isSectionEnabled("blog") && sortedPosts.length > 0 && (
+		<RecentPostsSection posts={sortedPosts.slice(0, 3)} />
+	)}
+
+	{isSectionEnabled("contact") && <ContactSection />}
+
+	{isSectionEnabled("cta") && <CTASection />}
+
+	{!hasContent && sortedPosts.length === 0 && (
+		<section class="empty">
+			<h2>Welcome to {config.site.name}</h2>
+			<p>Your website is ready. Open the AI Assistant to start building.</p>
+			<a href="/_emdash/admin" class="empty-btn">Open Admin</a>
+		</section>
+	)}
+</Base>
+
+<style>
+	.empty {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		padding: 6rem 1.5rem;
+		gap: 1rem;
+	}
+	.empty h2 { font-size: 2rem; font-weight: 700; color: #111827; }
+	.empty p { color: #6b7280; font-size: 1.1rem; }
+	.empty-btn {
+		margin-top: 1rem;
+		padding: 0.75rem 2rem;
+		background: #2563eb;
+		color: #fff;
+		border-radius: 0.5rem;
+		text-decoration: none;
+		font-weight: 600;
+	}
+</style>

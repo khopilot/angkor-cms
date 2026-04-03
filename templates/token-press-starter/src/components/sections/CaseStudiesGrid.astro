@@ -1,0 +1,128 @@
+---
+interface Props {
+	studies: Array<{ data: Record<string, unknown>; id: string }>;
+	title?: string;
+}
+const { studies, title = "Case Studies" } = Astro.props;
+---
+<section class="cases-section">
+	<div class="cases-inner">
+		<h2 class="cases-title">{title}</h2>
+		<div class="cases-grid">
+			{studies.map((s) => {
+				const client = String(s.data.client || s.data.client_name || s.data.company || "");
+				const studyTitle = String(s.data.title || s.data.name || "Case Study");
+				const desc = String(s.data.description || s.data.excerpt || s.data.summary || "");
+				const results = String(s.data.results || s.data.outcome || "");
+				return (
+					<div class="case-card">
+						{client && <span class="case-client">{client}</span>}
+						<h3 class="case-title">{studyTitle}</h3>
+						{desc && <p class="case-desc">{desc}</p>}
+						{results && (
+							<div class="case-results">
+								<span class="case-results-label">Results</span>
+								<span class="case-results-text">{results}</span>
+							</div>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	</div>
+</section>
+<style>
+	.cases-section {
+		padding: 5rem 1.5rem;
+		background: #f8fafc;
+	}
+
+	.cases-inner {
+		max-width: 72rem;
+		margin: 0 auto;
+	}
+
+	.cases-title {
+		font-size: 2.25rem;
+		font-weight: 700;
+		color: #111827;
+		text-align: center;
+		margin: 0 0 3.5rem;
+		letter-spacing: -0.02em;
+	}
+
+	.cases-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+		gap: 1.75rem;
+	}
+
+	.case-card {
+		background: #fff;
+		border-radius: 1rem;
+		border: 1px solid #f0f0f0;
+		border-top: 4px solid #2563eb;
+		padding: 2rem;
+		transition: all 0.3s ease;
+	}
+
+	.case-card:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 12px 36px rgba(37, 99, 235, 0.08);
+	}
+
+	.case-client {
+		display: inline-block;
+		font-size: 0.72rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: #2563eb;
+		margin-bottom: 0.75rem;
+	}
+
+	.case-title {
+		font-size: 1.2rem;
+		font-weight: 700;
+		color: #111827;
+		margin: 0 0 0.75rem;
+		line-height: 1.35;
+	}
+
+	.case-desc {
+		color: #6b7280;
+		font-size: 0.92rem;
+		line-height: 1.65;
+		margin: 0 0 1.25rem;
+	}
+
+	.case-results {
+		background: #f0fdf4;
+		border: 1px solid #bbf7d0;
+		border-radius: 0.5rem;
+		padding: 0.75rem 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.case-results-label {
+		font-size: 0.7rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: #15803d;
+	}
+
+	.case-results-text {
+		font-size: 0.88rem;
+		color: #166534;
+		line-height: 1.5;
+	}
+
+	@media (max-width: 600px) {
+		.cases-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>
