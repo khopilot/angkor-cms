@@ -109,6 +109,16 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 		case "comment_moderate": { const { id, status } = toolInput; response = await put(`/_emdash/api/admin/comments/${id}/status`, { status }); break; }
 		case "byline_list": { response = await get("/_emdash/api/admin/bylines"); break; }
 		case "byline_create": { const { slug, displayName, bio, url } = toolInput; response = await post("/_emdash/api/admin/bylines", { slug, displayName, bio, url }); break; }
+		case "section_list": { const { source, search } = toolInput; const p = new URLSearchParams(); if (source) p.set("source", String(source)); if (search) p.set("search", String(search)); const qs = p.toString(); response = await get(`/_emdash/api/sections${qs ? `?${qs}` : ""}`); break; }
+		case "section_get": { const { slug } = toolInput; response = await get(`/_emdash/api/sections/${slug}`); break; }
+		case "section_create": { const { slug, title, description, keywords, content } = toolInput; response = await post("/_emdash/api/sections", { slug, title, description, keywords, content }); break; }
+		case "section_update": { const { slug, title, description, content } = toolInput; response = await put(`/_emdash/api/sections/${slug}`, { title, description, content }); break; }
+		case "section_delete": { const { slug } = toolInput; response = await del(`/_emdash/api/sections/${slug}`); break; }
+		case "widget_area_list": { response = await get("/_emdash/api/widget-areas"); break; }
+		case "widget_area_create": { const { name, label, description } = toolInput; response = await post("/_emdash/api/widget-areas", { name, label, description }); break; }
+		case "widget_area_delete": { const { name } = toolInput; response = await del(`/_emdash/api/widget-areas/${name}`); break; }
+		case "widget_add": { const { area, type, title, content, menuName, componentId } = toolInput; response = await post(`/_emdash/api/widget-areas/${area}/widgets`, { type, title, content, menuName, componentId }); break; }
+		case "widget_delete": { const { area, widgetId } = toolInput; response = await del(`/_emdash/api/widget-areas/${area}/widgets/${widgetId}`); break; }
 		case "web_browse": { const { url } = toolInput; response = await apiFetch(`${API_BASE}/browse`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }); break; }
 		default: return { error: `Unknown tool: ${toolName}` };
 	}

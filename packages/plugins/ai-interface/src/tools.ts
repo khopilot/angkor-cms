@@ -624,6 +624,129 @@ export const CMS_TOOLS: AnthropicTool[] = [
 		},
 	},
 
+	// ── Sections (reusable page blocks) ──────────────────────────────────────
+	{
+		name: "section_list",
+		description: "List reusable page sections (hero blocks, feature grids, CTAs, etc.).",
+		input_schema: {
+			type: "object",
+			properties: {
+				source: { type: "string", enum: ["theme", "user", "import"], description: "Filter by source" },
+				search: { type: "string", description: "Search by title or keywords" },
+			},
+		},
+	},
+	{
+		name: "section_get",
+		description: "Get a section's content by slug.",
+		input_schema: {
+			type: "object",
+			properties: {
+				slug: { type: "string", description: "Section slug" },
+			},
+			required: ["slug"],
+		},
+	},
+	{
+		name: "section_create",
+		description: "Create a reusable page section (e.g. hero banner, feature grid, CTA block, testimonial carousel). Content uses Portable Text format — for simple text, use [{_key: 'k1', _type: 'block', style: 'normal', children: [{_key: 'c1', _type: 'span', text: 'Your text'}]}].",
+		input_schema: {
+			type: "object",
+			properties: {
+				slug: { type: "string", description: "Unique slug (e.g. 'hero-home', 'features-grid')" },
+				title: { type: "string", description: "Section title (e.g. 'Homepage Hero')" },
+				description: { type: "string", description: "What this section is for" },
+				keywords: { type: "array", items: { type: "string" }, description: "Tags for searchability (e.g. ['hero', 'homepage'])" },
+				content: { type: "array", description: "Portable Text blocks array", items: { type: "object", additionalProperties: true } },
+			},
+			required: ["slug", "title", "content"],
+		},
+	},
+	{
+		name: "section_update",
+		description: "Update a section's content or metadata.",
+		input_schema: {
+			type: "object",
+			properties: {
+				slug: { type: "string", description: "Section slug to update" },
+				title: { type: "string", description: "New title" },
+				description: { type: "string", description: "New description" },
+				content: { type: "array", description: "New Portable Text content", items: { type: "object", additionalProperties: true } },
+			},
+			required: ["slug"],
+		},
+	},
+	{
+		name: "section_delete",
+		description: "Delete a user-created section. Cannot delete theme-provided sections.",
+		input_schema: {
+			type: "object",
+			properties: {
+				slug: { type: "string", description: "Section slug" },
+			},
+			required: ["slug"],
+		},
+	},
+
+	// ── Widget Areas & Widgets ───────────────────────────────────────────────
+	{
+		name: "widget_area_list",
+		description: "List all widget areas (sidebar, footer, etc.) with their widgets.",
+		input_schema: { type: "object", properties: {} },
+	},
+	{
+		name: "widget_area_create",
+		description: "Create a new widget area for page layout (e.g. 'sidebar', 'footer', 'homepage-hero').",
+		input_schema: {
+			type: "object",
+			properties: {
+				name: { type: "string", description: "Unique identifier (e.g. 'sidebar', 'footer')" },
+				label: { type: "string", description: "Display name (e.g. 'Sidebar', 'Footer Widgets')" },
+				description: { type: "string", description: "Where this area appears on the site" },
+			},
+			required: ["name", "label"],
+		},
+	},
+	{
+		name: "widget_area_delete",
+		description: "Delete a widget area and all its widgets.",
+		input_schema: {
+			type: "object",
+			properties: {
+				name: { type: "string", description: "Widget area name" },
+			},
+			required: ["name"],
+		},
+	},
+	{
+		name: "widget_add",
+		description: "Add a widget to a widget area. Types: 'content' (rich text block), 'menu' (navigation menu), 'component' (built-in component like recent-posts).",
+		input_schema: {
+			type: "object",
+			properties: {
+				area: { type: "string", description: "Widget area name" },
+				type: { type: "string", enum: ["content", "menu", "component"], description: "Widget type" },
+				title: { type: "string", description: "Widget title" },
+				content: { type: "array", description: "Portable Text content (for type 'content')", items: { type: "object", additionalProperties: true } },
+				menuName: { type: "string", description: "Menu name to display (for type 'menu')" },
+				componentId: { type: "string", description: "Component ID (for type 'component', e.g. 'core:recent-posts')" },
+			},
+			required: ["area", "type"],
+		},
+	},
+	{
+		name: "widget_delete",
+		description: "Remove a widget from a widget area.",
+		input_schema: {
+			type: "object",
+			properties: {
+				area: { type: "string", description: "Widget area name" },
+				widgetId: { type: "string", description: "Widget ID to remove" },
+			},
+			required: ["area", "widgetId"],
+		},
+	},
+
 	// ── Web Browsing ──────────────────────────────────────────────────────────
 	{
 		name: "web_browse",
