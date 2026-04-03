@@ -22,6 +22,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import * as React from "react";
 
 import { fetchCommentCounts } from "../lib/api/comments";
+import { useChatDrawer } from "../lib/chat-drawer-context";
 import { useCurrentUser } from "../lib/api/current-user";
 import { usePluginAdmins } from "../lib/plugin-context";
 import { cn } from "../lib/utils";
@@ -146,6 +147,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 	const location = useLocation();
 	const currentPath = location.pathname;
 	const pluginAdmins = usePluginAdmins();
+	const chatDrawer = useChatDrawer();
 
 	const { data: user } = useCurrentUser();
 	const userRole = user?.role ?? 0;
@@ -373,10 +375,31 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 								item={{ to: "/", label: "Dashboard", icon: SquaresFour }}
 								isActive={isItemActive("/", currentPath)}
 							/>
-							<NavMenuLink
-								item={{ to: "/plugins/ai-interface/chat", label: "AI Assistant", icon: Sparkle }}
-								isActive={isItemActive("/plugins/ai-interface/chat", currentPath)}
-							/>
+							<KumoSidebar.MenuItem>
+								<button
+									onClick={chatDrawer.toggle}
+									data-active={chatDrawer.isOpen || undefined}
+									data-sidebar="menu-button"
+									className={cn(
+										"emdash-nav-link group/menu-button flex w-full min-w-0 items-center gap-2.5 rounded-md no-underline outline-none cursor-pointer",
+										"min-h-[36px] px-3 py-1.5 text-[13px]",
+										"transition-all duration-200 ease-out",
+										chatDrawer.isOpen ? "bg-kumo-brand text-white" : "text-white/70 hover:text-white hover:bg-white/8",
+										"focus-visible:ring-2 focus-visible:ring-kumo-brand/50",
+									)}
+								>
+									<Sparkle
+										className={cn(
+											"emdash-nav-icon size-[18px] shrink-0 transition-colors duration-200",
+											chatDrawer.isOpen ? "text-white" : "text-white/60 group-hover/menu-button:text-white/90",
+										)}
+										aria-hidden="true"
+									/>
+									<span className="emdash-nav-label flex flex-1 items-center min-w-0 text-left overflow-hidden">
+										AI Assistant
+									</span>
+								</button>
+							</KumoSidebar.MenuItem>
 						</KumoSidebar.Menu>
 					</KumoSidebar.Group>
 
