@@ -7,6 +7,8 @@
 import node from "@astrojs/node";
 import react from "@astrojs/react";
 import { colorPlugin } from "@emdash-cms/plugin-color";
+import { aiInterfacePlugin } from "@angkor-cms/plugin-ai-interface";
+import { siteDeployerPlugin } from "@token-press/plugin-site-deployer";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
 import { sqlite } from "emdash/db";
@@ -21,7 +23,7 @@ export default defineConfig({
 		react(),
 		emdash({
 			database: sqlite({ url: dbUrl }),
-			plugins: [colorPlugin()],
+			plugins: [colorPlugin(), aiInterfacePlugin(), siteDeployerPlugin()],
 			marketplace: marketplaceUrl,
 			sandboxRunner: marketplaceUrl ? "./noop-sandbox.mjs" : undefined,
 		}),
