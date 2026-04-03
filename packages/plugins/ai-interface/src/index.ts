@@ -105,6 +105,7 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 
 					const input = ctx.input as {
 						messages?: Array<{ role: string; content: unknown }>;
+						pageContext?: { type: string; collection?: string; contentId?: string; menuName?: string; taxonomy?: string; slug?: string; settingsPage?: string; isNew?: boolean; isEditing?: boolean };
 					} | null;
 					const messages = Array.isArray(input?.messages) ? input.messages : [];
 
@@ -113,6 +114,44 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 							status: 400,
 							headers: { "Content-Type": "application/json" },
 						});
+					}
+
+					// Build context-aware system prompt
+					let systemPrompt = SYSTEM_PROMPT;
+					const pc = input?.pageContext;
+					if (pc) {
+						let ctx_prompt = "";
+						switch (pc.type) {
+							case "content":
+								if (pc.isEditing) ctx_prompt = `\n\nCONTEXT: The user is editing content item "${pc.contentId}" in the "${pc.collection}" collection. Prioritize: improving text, translating, SEO, publishing. Use content_get to read current content before suggesting changes.`;
+								else if (pc.isNew) ctx_prompt = `\n\nCONTEXT: The user is creating a new "${pc.collection}" item. Use schema_get_collection to check fields, then help fill them with great content.`;
+								else ctx_prompt = `\n\nCONTEXT: The user is browsing the "${pc.collection}" collection. They may want to create, edit, or manage items.`;
+								break;
+							case "menu":
+								ctx_prompt = pc.menuName
+									? `\n\nCONTEXT: The user is editing the "${pc.menuName}" menu. Use menu_get to see current items, then help add/remove/reorder.`
+									: `\n\nCONTEXT: The user is managing menus. Use menu_list to see existing menus.`;
+								break;
+							case "taxonomy":
+								ctx_prompt = `\n\nCONTEXT: The user is managing the "${pc.taxonomy}" taxonomy. Help add, edit, or organize terms.`;
+								break;
+							case "settings":
+								ctx_prompt = `\n\nCONTEXT: The user is in site settings (${pc.settingsPage || "general"}). Use settings_get to see current values, then help configure.`;
+								break;
+							case "content-types":
+								ctx_prompt = pc.slug
+									? `\n\nCONTEXT: The user is editing the "${pc.slug}" content type. Use schema_get_collection to see current schema.`
+									: `\n\nCONTEXT: The user is managing content types. Use schema_list_collections to see what exists.`;
+								break;
+							case "media": ctx_prompt = "\n\nCONTEXT: The user is in the media library. Help manage files — list, update metadata, or identify unused media."; break;
+							case "comments": ctx_prompt = "\n\nCONTEXT: The user is managing comments. Use comment_list to show pending ones."; break;
+							case "sections": ctx_prompt = "\n\nCONTEXT: The user is managing page sections. Help create reusable blocks (heroes, grids, CTAs)."; break;
+							case "widgets": ctx_prompt = "\n\nCONTEXT: The user is managing widget areas. Help set up sidebar, footer, or other zones."; break;
+							case "redirects": ctx_prompt = "\n\nCONTEXT: The user is managing URL redirects. Help create or edit redirect rules."; break;
+							case "users": ctx_prompt = "\n\nCONTEXT: The user is managing site users."; break;
+							case "dashboard": ctx_prompt = "\n\nCONTEXT: The user is on the dashboard — overview mode. They may want to start building or check site status."; break;
+						}
+						systemPrompt += ctx_prompt;
 					}
 
 					const model = options.model ?? "claude-sonnet-4-6";
@@ -128,7 +167,7 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 						body: JSON.stringify({
 							model,
 							max_tokens: maxTokens,
-							system: SYSTEM_PROMPT,
+							system: systemPrompt,
 							tools: CMS_TOOLS,
 							messages,
 							stream: true,

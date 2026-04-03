@@ -258,16 +258,178 @@ function fmtInline(text: string): React.ReactNode {
 	return parts.length === 1 ? parts[0] : parts;
 }
 
-// ── Quick Actions ─────────────────────────────────────────────────────────────
+// ── Page Context Detection ────────────────────────────────────────────────────
 
-const QUICK_ACTIONS = [
-	{ label: "Build my website", prompt: "Help me build a complete website from scratch. Ask me what kind of site I want, then create the collections, fields, navigation menu, and sample content — and publish everything so it's live immediately." },
-	{ label: "Write & publish a post", prompt: "Write a blog post about the latest trends in our industry. Make it engaging, then publish it so it appears on the live website." },
-	{ label: "Set up site structure", prompt: "Show me the current site structure (collections and fields), then help me improve it based on best practices." },
-	{ label: "Add a new section", prompt: "Create a new content collection for my website (e.g., services, team, testimonials). Add the right fields and publish some sample content." },
+interface PageContext {
+	type: string;
+	collection?: string;
+	contentId?: string;
+	menuName?: string;
+	taxonomy?: string;
+	slug?: string;
+	settingsPage?: string;
+	isNew?: boolean;
+	isEditing?: boolean;
+}
+
+function usePageContext(): PageContext | null {
+	const [ctx, setCtx] = React.useState<PageContext | null>(null);
+	const ref = React.useRef<HTMLDivElement>(null);
+
+	React.useEffect(() => {
+		const el = ref.current?.closest("[data-page-context]");
+		if (el) {
+			try { setCtx(JSON.parse(el.getAttribute("data-page-context")!) as PageContext); } catch { /* */ }
+		}
+	});
+
+	// Expose ref for the component to attach
+	(usePageContext as { _ref?: React.RefObject<HTMLDivElement | null> })._ref = ref;
+	return ctx;
+}
+
+// ── Quick Actions (context-aware) ─────────────────────────────────────────────
+
+const DEFAULT_ACTIONS = [
+	{ label: "Build my website", prompt: "Help me build a complete website from scratch. Ask me what kind of site I want, then create everything and publish it." },
+	{ label: "Write & publish a post", prompt: "Write a blog post about the latest trends in our industry. Publish it so it appears on the website." },
+	{ label: "Set up site structure", prompt: "Show me the current site structure (collections and fields) and help me improve it." },
 	{ label: "Browse a website", prompt: "I want you to look at a website for inspiration. Visit https://example.com and help me build something similar." },
-	{ label: "View all content", prompt: "List all published content across all collections so I can see what's on my website right now." },
 ];
+
+function getQuickActions(ctx: PageContext | null): Array<{ label: string; prompt: string }> {
+	if (!ctx) return DEFAULT_ACTIONS;
+
+	switch (ctx.type) {
+		case "content":
+			if (ctx.isEditing) return [
+				{ label: "Improve this content", prompt: `Read the content item ${ctx.contentId} in ${ctx.collection} and suggest improvements to make it more engaging.` },
+				{ label: "Translate to French", prompt: `Translate the content item ${ctx.contentId} in ${ctx.collection} to French and create a new translated version.` },
+				{ label: "Add SEO metadata", prompt: `Check the SEO of content item ${ctx.contentId} in ${ctx.collection} and help me optimize it.` },
+				{ label: "Publish this", prompt: `Publish content item ${ctx.contentId} in ${ctx.collection} to make it live on the website.` },
+			];
+			if (ctx.isNew) return [
+				{ label: "Help me write this", prompt: `I'm creating a new ${ctx.collection} item. Check the schema and help me fill in all the fields with great content.` },
+				{ label: "Generate from brief", prompt: `I want to create a new ${ctx.collection} item. Ask me what it should be about and write it for me.` },
+			];
+			return [
+				{ label: `Create new ${ctx.collection}`, prompt: `Create a new item in the ${ctx.collection} collection with great content and publish it.` },
+				{ label: `List all ${ctx.collection}`, prompt: `List all items in the ${ctx.collection} collection with their status.` },
+				{ label: `Add field to ${ctx.collection}`, prompt: `Show me the current fields in ${ctx.collection} and suggest what fields I should add.` },
+				{ label: "Bulk create content", prompt: `Create 5 sample items in ${ctx.collection} with realistic content and publish them all.` },
+			];
+		case "menu":
+			if (ctx.menuName) return [
+				{ label: "Add menu items", prompt: `Show me the current items in the ${ctx.menuName} menu and help me add more navigation links.` },
+				{ label: "Rebuild this menu", prompt: `Delete all items in the ${ctx.menuName} menu and rebuild it based on the site's collections and pages.` },
+				{ label: "Create footer menu", prompt: "Create a footer menu with links to About, Contact, Privacy, and Terms pages." },
+			];
+			return [
+				{ label: "Create primary nav", prompt: "Create a primary navigation menu with links to all main sections of the site." },
+				{ label: "List all menus", prompt: "Show me all menus and their items." },
+			];
+		case "taxonomy":
+			return [
+				{ label: `Add ${ctx.taxonomy} terms`, prompt: `Show me existing ${ctx.taxonomy} terms and suggest new ones to add based on the site content.` },
+				{ label: "Organize terms", prompt: `Help me reorganize the ${ctx.taxonomy} taxonomy for better content organization.` },
+			];
+		case "settings":
+			return [
+				{ label: "Update site info", prompt: "Show me the current site settings and help me update the title, tagline, and description." },
+				{ label: "Configure SEO", prompt: "Help me set up the SEO settings for better search engine visibility." },
+				{ label: "Set up social links", prompt: "Help me configure social media links for the site." },
+			];
+		case "content-types":
+			if (ctx.slug) return [
+				{ label: "Add fields", prompt: `Show me the fields in ${ctx.slug} and suggest what fields I should add for a professional site.` },
+				{ label: "Create sample content", prompt: `Create 3 sample items with realistic content in ${ctx.slug} and publish them.` },
+			];
+			return [
+				{ label: "Create a collection", prompt: "Help me create a new content type. Ask me what it's for and set it up with the right fields." },
+				{ label: "Review all types", prompt: "List all content types with their fields so I can review the site structure." },
+			];
+		case "media":
+			return [
+				{ label: "List all images", prompt: "List all uploaded images with their alt text and dimensions." },
+				{ label: "Find unused media", prompt: "Help me identify media files that aren't used in any content." },
+			];
+		case "comments":
+			return [
+				{ label: "Show pending", prompt: "List all pending comments that need moderation." },
+				{ label: "Moderate all", prompt: "Show me all pending comments and help me approve or reject them." },
+			];
+		case "sections":
+			return [
+				{ label: "Create hero section", prompt: "Create a hero section with a compelling headline and description for the homepage." },
+				{ label: "Create feature grid", prompt: "Create a features/services section with 3-6 items highlighting key offerings." },
+				{ label: "List all sections", prompt: "Show me all existing page sections." },
+			];
+		case "widgets":
+			return [
+				{ label: "Set up sidebar", prompt: "Create a sidebar widget area with recent posts and categories." },
+				{ label: "Set up footer", prompt: "Create a footer widget area with a navigation menu and copyright text." },
+			];
+		case "redirects":
+			return [
+				{ label: "List redirects", prompt: "Show me all URL redirects currently configured." },
+				{ label: "Create redirect", prompt: "Help me create a URL redirect from an old page to a new one." },
+			];
+		case "users":
+			return [
+				{ label: "List users", prompt: "Show me all site users with their roles." },
+			];
+		default:
+			return DEFAULT_ACTIONS;
+	}
+}
+
+function getPlaceholder(ctx: PageContext | null): string {
+	if (!ctx) return "Describe what you want to build...";
+
+	switch (ctx.type) {
+		case "content":
+			if (ctx.isEditing) return `How should I help with this ${ctx.collection} item?`;
+			if (ctx.isNew) return `What should this new ${ctx.collection} item be about?`;
+			return `Ask about your ${ctx.collection}...`;
+		case "menu":
+			return ctx.menuName ? `What should I add to the ${ctx.menuName} menu?` : "How can I help with menus?";
+		case "taxonomy":
+			return `Manage ${ctx.taxonomy} terms...`;
+		case "settings":
+			return "What settings would you like to change?";
+		case "content-types":
+			return ctx.slug ? `How should I modify the ${ctx.slug} collection?` : "What content type do you need?";
+		case "media":
+			return "How can I help with your media?";
+		case "comments":
+			return "How should I handle these comments?";
+		case "sections":
+			return "What kind of section do you want to create?";
+		case "widgets":
+			return "How should I set up your widget areas?";
+		case "redirects":
+			return "What redirect do you need?";
+		default:
+			return "Describe what you want to build...";
+	}
+}
+
+function getEmptyTitle(ctx: PageContext | null): string {
+	if (!ctx) return "Build your website";
+	switch (ctx.type) {
+		case "content": return ctx.isEditing ? "Edit with AI" : `Manage ${ctx.collection || "content"}`;
+		case "menu": return "Build your navigation";
+		case "taxonomy": return `Organize ${ctx.taxonomy || "taxonomy"}`;
+		case "settings": return "Configure your site";
+		case "content-types": return "Design your schema";
+		case "media": return "Manage your media";
+		case "comments": return "Moderate comments";
+		case "sections": return "Design page sections";
+		case "widgets": return "Set up widgets";
+		case "redirects": return "Manage redirects";
+		default: return "Build your website";
+	}
+}
 
 // ── Tool Badges (grouped) ────────────────────────────────────────────────────
 
@@ -456,6 +618,12 @@ function HistorySidebar({
 // ── Main Chat Page ────────────────────────────────────────────────────────────
 
 function ChatPage() {
+	const pageCtx = usePageContext();
+	const containerRef = (usePageContext as { _ref?: React.RefObject<HTMLDivElement | null> })._ref!;
+	const quickActions = React.useMemo(() => getQuickActions(pageCtx), [pageCtx]);
+	const placeholder = React.useMemo(() => getPlaceholder(pageCtx), [pageCtx]);
+	const emptyTitle = React.useMemo(() => getEmptyTitle(pageCtx), [pageCtx]);
+
 	const [messages, setMessages] = React.useState<ChatMessage[]>([]);
 	const [input, setInput] = React.useState("");
 	const [isStreaming, setIsStreaming] = React.useState(false);
@@ -567,7 +735,7 @@ function ChatPage() {
 			const response = await apiFetch(CHAT_URL, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ messages: conv }),
+				body: JSON.stringify({ messages: conv, pageContext: pageCtx }),
 				signal,
 			});
 			if (!response.ok || !response.body) {
@@ -643,7 +811,7 @@ function ChatPage() {
 	};
 
 	return (
-		<div className="flex h-full max-h-[calc(100vh-8rem)]">
+		<div ref={containerRef} className="flex h-full max-h-[calc(100vh-8rem)]">
 			{/* History sidebar */}
 			<HistorySidebar
 				conversations={conversations}
@@ -694,13 +862,13 @@ function ChatPage() {
 								<div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
 									<Sparkle className="h-7 w-7 text-white" weight="fill" />
 								</div>
-								<h2 className="text-2xl font-bold" style={{ color: "#111827" }}>Build your website</h2>
+								<h2 className="text-2xl font-bold" style={{ color: "#111827" }}>{emptyTitle}</h2>
 								<p style={{ color: "#6b7280" }} className="max-w-md">
 									Tell me what kind of website you want. I'll create the structure, write the content, build the menus, and publish everything — your site updates in real time.
 								</p>
 							</div>
 							<div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-2xl">
-								{QUICK_ACTIONS.map((action) => (
+								{quickActions.map((action) => (
 									<button
 										key={action.label}
 										onClick={() => void send(action.prompt)}
@@ -727,7 +895,7 @@ function ChatPage() {
 							value={input}
 							onChange={handleInputChange}
 							onKeyDown={handleKeyDown}
-							placeholder="Describe what you want to build..."
+							placeholder={placeholder}
 							rows={1}
 							disabled={isStreaming}
 							className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none disabled:opacity-50 max-h-40"

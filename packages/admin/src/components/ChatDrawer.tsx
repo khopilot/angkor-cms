@@ -1,7 +1,7 @@
 /**
  * ChatDrawer — Global floating chat panel.
  * Slides in from the right, overlays on top of any admin page.
- * Uses the ai-interface plugin's ChatPage component via plugin context.
+ * Passes page context so the AI adapts to the current admin page.
  */
 
 import { X } from "@phosphor-icons/react";
@@ -11,13 +11,11 @@ import { useChatDrawer } from "../lib/chat-drawer-context";
 import { usePluginAdmins } from "../lib/plugin-context";
 
 export function ChatDrawer() {
-	const { isOpen, close } = useChatDrawer();
+	const { isOpen, close, pageContext } = useChatDrawer();
 	const pluginAdmins = usePluginAdmins();
 
-	// Get the ChatPage component from the ai-interface plugin
 	const ChatPage = pluginAdmins["ai-interface"]?.pages?.["/chat"];
 
-	// Close on Escape key
 	React.useEffect(() => {
 		if (!isOpen) return;
 		const handleKeyDown = (e: KeyboardEvent) => {
@@ -31,19 +29,16 @@ export function ChatDrawer() {
 
 	return (
 		<>
-			{/* Backdrop */}
 			<div
 				className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
 				onClick={close}
 				aria-hidden="true"
 			/>
 
-			{/* Drawer panel */}
 			<div
 				className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl flex flex-col shadow-2xl"
 				style={{ backgroundColor: "#ffffff" }}
 			>
-				{/* Close button */}
 				<button
 					onClick={close}
 					className="absolute top-3 right-3 z-10 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
@@ -53,8 +48,11 @@ export function ChatDrawer() {
 					<X className="h-4 w-4" />
 				</button>
 
-				{/* Chat content — full height */}
-				<div className="flex-1 overflow-hidden">
+				{/* Pass page context via data attribute for cross-package communication */}
+				<div
+					data-page-context={JSON.stringify(pageContext)}
+					className="flex-1 overflow-hidden"
+				>
 					<ChatPage />
 				</div>
 			</div>
