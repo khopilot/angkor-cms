@@ -45,6 +45,35 @@ let menu = await getMenu("primary");
 if (!menu?.items?.length) menu = await getMenu("main");
 if (!menu?.items?.length) menu = await getMenu("primary-navigation");
 
+// Auto-generate nav links from collections if no menu exists
+type NavLink = { url: string; label: string; target?: string };
+let autoNavLinks: NavLink[] = [];
+if (!menu?.items?.length) {
+	// Check which collections exist and create nav links
+	const collectionNames = [
+		{ name: "services", label: "Services", url: "/services" },
+		{ name: "team", label: "Team", url: "/team" },
+		{ name: "posts", label: "Blog", url: "/posts" },
+	];
+	for (const c of collectionNames) {
+		try {
+			const { entries } = await getEmDashCollection(c.name);
+			if (entries.length > 0) autoNavLinks.push({ url: c.url, label: c.label });
+		} catch { /* collection doesn't exist */ }
+	}
+	// Always add static page links
+	try {
+		const { entries: pagesCheck } = await getEmDashCollection("pages");
+		for (const p of pagesCheck) {
+			const slug = p.id;
+			const title = String(p.data.title || slug);
+			if (slug !== "home" && slug !== "homepage-new") {
+				autoNavLinks.push({ url: `/pages/${slug}`, label: title });
+			}
+		}
+	} catch { /* no pages */ }
+}
+
 // Fetch pages for footer
 const { entries: pages } = await getEmDashCollection("pages");
 
@@ -115,11 +144,17 @@ const isLoggedIn = !!Astro.locals.user;
 					/>
 					<div class="nav-links">
 						{
-							menu?.items.map((item) => (
-								<a href={item.url} target={item.target}>
-									{item.label}
-								</a>
-							))
+							menu?.items?.length
+								? menu.items.map((item) => (
+									<a href={item.url} target={item.target}>
+										{item.label}
+									</a>
+								))
+								: autoNavLinks.map((link) => (
+									<a href={link.url}>
+										{link.label}
+									</a>
+								))
 						}
 					</div>
 					{
