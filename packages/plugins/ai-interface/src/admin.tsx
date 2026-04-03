@@ -119,6 +119,107 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 		case "widget_area_delete": { const { name } = toolInput; response = await del(`/_emdash/api/widget-areas/${name}`); break; }
 		case "widget_add": { const { area, type, title, content, menuName, componentId } = toolInput; response = await post(`/_emdash/api/widget-areas/${area}/widgets`, { type, title, content, menuName, componentId }); break; }
 		case "widget_delete": { const { area, widgetId } = toolInput; response = await del(`/_emdash/api/widget-areas/${area}/widgets/${widgetId}`); break; }
+		case "site_blueprint": {
+			const { site_name, tagline, site_type, services: svcs, team: tm, testimonials: test, faqs: fqs, nav_links } = toolInput;
+			const results: string[] = [];
+			const errors: string[] = [];
+
+			// Helper: create collection + fields + content
+			async function ensureCollection(slug: string, label: string, fields: Array<{slug: string; label: string; type: string; required?: boolean}>, items: Array<Record<string, unknown>>) {
+				// Check if collection exists
+				const checkRes = await get(`/_emdash/api/schema/collections/${slug}`);
+				if (!checkRes.ok) {
+					// Create collection
+					const createRes = await post("/_emdash/api/schema/collections", { slug, label, labelSingular: label.replace(/s$/, ""), supports: ["drafts", "revisions", "search"] });
+					if (createRes.ok) results.push(`Created collection: ${label}`);
+					else errors.push(`Failed to create ${slug}`);
+
+					// Create fields
+					for (const f of fields) {
+						await post(`/_emdash/api/schema/collections/${slug}/fields`, f);
+					}
+					results.push(`Added ${fields.length} fields to ${slug}`);
+				} else {
+					results.push(`Collection ${slug} already exists`);
+				}
+
+				// Create content items
+				let created = 0;
+				for (const item of items) {
+					const res = await post(`/_emdash/api/content/${slug}`, { data: item, status: "published" });
+					if (res.ok) {
+						const data = await res.json() as { data?: { item?: { id: string } } };
+						const id = data.data?.item?.id;
+						if (id) await post(`/_emdash/api/content/${slug}/${id}/publish`);
+						created++;
+					}
+				}
+				if (created > 0) results.push(`Published ${created} ${slug} items`);
+			}
+
+			try {
+				// Step 1: Update settings
+				await post("/_emdash/api/settings", { title: String(site_name), tagline: String(tagline || "") });
+				results.push(`Site: ${site_name}`);
+
+				// Step 2: Create services
+				if (Array.isArray(svcs) && svcs.length > 0) {
+					await ensureCollection("services", "Services", [
+						{ slug: "title", label: "Title", type: "string", required: true },
+						{ slug: "description", label: "Description", type: "text", required: true },
+						{ slug: "icon", label: "Icon", type: "string" },
+					], svcs as Record<string, unknown>[]);
+				}
+
+				// Step 3: Create team
+				if (Array.isArray(tm) && tm.length > 0) {
+					await ensureCollection("team", "Team", [
+						{ slug: "name", label: "Name", type: "string", required: true },
+						{ slug: "role", label: "Role", type: "string", required: true },
+						{ slug: "bio", label: "Bio", type: "text" },
+					], tm as Record<string, unknown>[]);
+				}
+
+				// Step 4: Create testimonials
+				if (Array.isArray(test) && test.length > 0) {
+					await ensureCollection("testimonials", "Testimonials", [
+						{ slug: "quote", label: "Quote", type: "text", required: true },
+						{ slug: "author_name", label: "Author Name", type: "string", required: true },
+						{ slug: "author_role", label: "Author Role", type: "string" },
+						{ slug: "author_company", label: "Company", type: "string" },
+					], test as Record<string, unknown>[]);
+				}
+
+				// Step 5: Create FAQs
+				if (Array.isArray(fqs) && fqs.length > 0) {
+					await ensureCollection("faq", "FAQ", [
+						{ slug: "question", label: "Question", type: "string", required: true },
+						{ slug: "answer", label: "Answer", type: "text", required: true },
+					], fqs as Record<string, unknown>[]);
+				}
+
+				// Step 6: Create navigation menu
+				const links = Array.isArray(nav_links) ? nav_links as Array<{label: string; url: string}> : [
+					{ label: "Services", url: "/services" },
+					{ label: "Team", url: "/team" },
+					{ label: "Blog", url: "/posts" },
+					{ label: "Contact", url: "/contact" },
+				];
+				// Delete existing primary menu
+				await del("/_emdash/api/menus/primary").catch(() => {});
+				const menuRes = await post("/_emdash/api/menus", { name: "primary", label: "Primary Navigation" });
+				if (menuRes.ok) {
+					for (const link of links) {
+						await post("/_emdash/api/menus/primary/items", { type: "custom", label: link.label, customUrl: link.url });
+					}
+					results.push(`Navigation: ${links.length} menu items`);
+				}
+
+				return { success: true, results, errors, message: `Website "${site_name}" created! ${results.length} steps completed.` };
+			} catch (err) {
+				return { success: false, results, errors: [...errors, String(err)], message: "Blueprint partially completed with errors." };
+			}
+		}
 		case "image_generate": {
 			// Step 1: Generate image via MiniMax
 			const genRes = await apiFetch(`${API_BASE}/generate-image`, {

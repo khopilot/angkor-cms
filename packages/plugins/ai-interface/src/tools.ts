@@ -747,6 +747,47 @@ export const CMS_TOOLS: AnthropicTool[] = [
 		},
 	},
 
+	// ── Site Blueprint (batch creation) ───────────────────────────────────────
+	{
+		name: "site_blueprint",
+		description:
+			"Create a complete website structure in ONE call. Creates all collections, fields, sample content, and navigation at once. Use this instead of calling schema_create_collection + schema_create_field + content_create individually. Much faster and more reliable.",
+		input_schema: {
+			type: "object",
+			properties: {
+				site_name: { type: "string", description: "Business/site name (e.g. 'ACME Corp')" },
+				tagline: { type: "string", description: "One-line description (e.g. 'Building the future of tech')" },
+				site_type: { type: "string", enum: ["business", "restaurant", "portfolio", "blog", "saas", "agency", "nonprofit", "ecommerce"], description: "Type of website to create" },
+				services: {
+					type: "array",
+					description: "List of services/offerings. Each: { title, description, icon (emoji) }",
+					items: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, icon: { type: "string" } }, required: ["title", "description"] },
+				},
+				team: {
+					type: "array",
+					description: "Team members. Each: { name, role, bio }",
+					items: { type: "object", properties: { name: { type: "string" }, role: { type: "string" }, bio: { type: "string" } }, required: ["name", "role"] },
+				},
+				testimonials: {
+					type: "array",
+					description: "Client testimonials. Each: { quote, author_name, author_role, author_company }",
+					items: { type: "object", properties: { quote: { type: "string" }, author_name: { type: "string" }, author_role: { type: "string" }, author_company: { type: "string" } }, required: ["quote", "author_name"] },
+				},
+				faqs: {
+					type: "array",
+					description: "FAQ items. Each: { question, answer }",
+					items: { type: "object", properties: { question: { type: "string" }, answer: { type: "string" } }, required: ["question", "answer"] },
+				},
+				nav_links: {
+					type: "array",
+					description: "Navigation links. Each: { label, url }",
+					items: { type: "object", properties: { label: { type: "string" }, url: { type: "string" } }, required: ["label", "url"] },
+				},
+			},
+			required: ["site_name", "site_type"],
+		},
+	},
+
 	// ── Image Generation (MiniMax image-01) ──────────────────────────────────
 	{
 		name: "image_generate",
