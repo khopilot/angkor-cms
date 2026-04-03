@@ -65,6 +65,12 @@ async function executeCmsTool(
 			headers: { "Content-Type": "application/json" },
 			body: body ? JSON.stringify(body) : undefined,
 		});
+	const put = (url: string, body: unknown) =>
+		apiFetch(url, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
 	const patch = (url: string, body: unknown) =>
 		apiFetch(url, {
 			method: "PATCH",
@@ -76,6 +82,7 @@ async function executeCmsTool(
 	let response: Response;
 
 	switch (toolName) {
+		// ── Content ──────────────────────────────────────────────────────
 		case "content_list": {
 			const { collection, status, limit, locale } = toolInput;
 			const params = new URLSearchParams();
@@ -94,7 +101,7 @@ async function executeCmsTool(
 		case "content_create": {
 			const { collection, data, slug, status, locale, translationOf } = toolInput;
 			response = await post(`/_emdash/api/content/${collection}`, {
-				...(data as Record<string, unknown>),
+				data,
 				slug,
 				status,
 				locale,
@@ -105,7 +112,7 @@ async function executeCmsTool(
 		case "content_update": {
 			const { collection, id, data, slug } = toolInput;
 			response = await patch(`/_emdash/api/content/${collection}/${id}`, {
-				...(data as Record<string, unknown>),
+				data,
 				slug,
 			});
 			break;
@@ -125,11 +132,56 @@ async function executeCmsTool(
 			response = await del(`/_emdash/api/content/${collection}/${id}`);
 			break;
 		}
+		case "content_restore": {
+			const { collection, id } = toolInput;
+			response = await post(`/_emdash/api/content/${collection}/${id}/restore`);
+			break;
+		}
+		case "content_permanent_delete": {
+			const { collection, id } = toolInput;
+			response = await del(`/_emdash/api/content/${collection}/${id}/permanent`);
+			break;
+		}
 		case "content_duplicate": {
 			const { collection, id } = toolInput;
 			response = await post(`/_emdash/api/content/${collection}/${id}/duplicate`);
 			break;
 		}
+		case "content_schedule": {
+			const { collection, id, scheduledAt } = toolInput;
+			response = await post(`/_emdash/api/content/${collection}/${id}/schedule`, { scheduledAt });
+			break;
+		}
+		case "content_compare": {
+			const { collection, id } = toolInput;
+			response = await get(`/_emdash/api/content/${collection}/${id}/compare`);
+			break;
+		}
+		case "content_discard_draft": {
+			const { collection, id } = toolInput;
+			response = await post(`/_emdash/api/content/${collection}/${id}/discard-draft`);
+			break;
+		}
+		case "content_list_trashed": {
+			const { collection, limit } = toolInput;
+			const params = new URLSearchParams();
+			if (limit) params.set("limit", String(limit));
+			const qs = params.toString();
+			response = await get(`/_emdash/api/content/${collection}/trash${qs ? `?${qs}` : ""}`);
+			break;
+		}
+		case "content_translations": {
+			const { collection, id } = toolInput;
+			response = await get(`/_emdash/api/content/${collection}/${id}/translations`);
+			break;
+		}
+		case "content_set_terms": {
+			const { collection, id, taxonomy, terms } = toolInput;
+			response = await post(`/_emdash/api/content/${collection}/${id}/terms/${taxonomy}`, { terms });
+			break;
+		}
+
+		// ── Schema ──────────────────────────────────────────────────────
 		case "schema_list_collections": {
 			response = await get("/_emdash/api/schema");
 			break;
@@ -142,25 +194,56 @@ async function executeCmsTool(
 		case "schema_create_collection": {
 			const { slug, label, labelSingular, description, supports } = toolInput;
 			response = await post("/_emdash/api/schema/collections", {
-				slug,
-				label,
-				labelSingular,
-				description,
-				supports,
+				slug, label, labelSingular, description, supports,
 			});
 			break;
 		}
 		case "schema_create_field": {
 			const { collection, slug, label, type, required, searchable } = toolInput;
 			response = await post(`/_emdash/api/schema/collections/${collection}/fields`, {
-				slug,
-				label,
-				type,
-				required,
-				searchable,
+				slug, label, type, required, searchable,
 			});
 			break;
 		}
+		case "schema_delete_collection": {
+			const { slug, force } = toolInput;
+			const params = force ? "?force=true" : "";
+			response = await del(`/_emdash/api/schema/collections/${slug}${params}`);
+			break;
+		}
+		case "schema_delete_field": {
+			const { collection, fieldSlug } = toolInput;
+			response = await del(`/_emdash/api/schema/collections/${collection}/fields/${fieldSlug}`);
+			break;
+		}
+
+		// ── Media ────────────────────────────────────────────────────────
+		case "media_list": {
+			const { mimeType, limit } = toolInput;
+			const params = new URLSearchParams();
+			if (mimeType) params.set("mimeType", String(mimeType));
+			if (limit) params.set("limit", String(limit));
+			const qs = params.toString();
+			response = await get(`/_emdash/api/media${qs ? `?${qs}` : ""}`);
+			break;
+		}
+		case "media_get": {
+			const { id } = toolInput;
+			response = await get(`/_emdash/api/media/${id}`);
+			break;
+		}
+		case "media_update": {
+			const { id, alt, caption } = toolInput;
+			response = await put(`/_emdash/api/media/${id}`, { alt, caption });
+			break;
+		}
+		case "media_delete": {
+			const { id } = toolInput;
+			response = await del(`/_emdash/api/media/${id}`);
+			break;
+		}
+
+		// ── Search ───────────────────────────────────────────────────────
 		case "search": {
 			const { query, limit } = toolInput;
 			const params = new URLSearchParams({ q: String(query) });
@@ -168,6 +251,8 @@ async function executeCmsTool(
 			response = await get(`/_emdash/api/search?${params.toString()}`);
 			break;
 		}
+
+		// ── Taxonomy ─────────────────────────────────────────────────────
 		case "taxonomy_list": {
 			response = await get("/_emdash/api/taxonomies");
 			break;
@@ -179,11 +264,23 @@ async function executeCmsTool(
 		}
 		case "taxonomy_create_term": {
 			const { taxonomy, name, slug, description } = toolInput;
-			response = await post(`/_emdash/api/taxonomies/${taxonomy}/terms`, {
-				name,
-				slug,
-				description,
-			});
+			response = await post(`/_emdash/api/taxonomies/${taxonomy}/terms`, { name, slug, description });
+			break;
+		}
+		case "taxonomy_update_term": {
+			const { taxonomy, termSlug, name, description } = toolInput;
+			response = await put(`/_emdash/api/taxonomies/${taxonomy}/terms/${termSlug}`, { name, description });
+			break;
+		}
+		case "taxonomy_delete_term": {
+			const { taxonomy, termSlug } = toolInput;
+			response = await del(`/_emdash/api/taxonomies/${taxonomy}/terms/${termSlug}`);
+			break;
+		}
+
+		// ── Menus ────────────────────────────────────────────────────────
+		case "menu_list": {
+			response = await get("/_emdash/api/menus");
 			break;
 		}
 		case "menu_get": {
@@ -191,6 +288,87 @@ async function executeCmsTool(
 			response = await get(`/_emdash/api/menus/${menu}`);
 			break;
 		}
+		case "menu_create": {
+			const { name, label } = toolInput;
+			response = await post("/_emdash/api/menus", { name, label });
+			break;
+		}
+		case "menu_add_item": {
+			const { menu, label, url, parentId } = toolInput;
+			response = await post(`/_emdash/api/menus/${menu}/items`, { label, url, parentId });
+			break;
+		}
+		case "menu_delete": {
+			const { menu } = toolInput;
+			response = await del(`/_emdash/api/menus/${menu}`);
+			break;
+		}
+
+		// ── Revisions ────────────────────────────────────────────────────
+		case "revision_list": {
+			const { collection, id } = toolInput;
+			response = await get(`/_emdash/api/content/${collection}/${id}/revisions`);
+			break;
+		}
+		case "revision_restore": {
+			const { revisionId } = toolInput;
+			response = await post(`/_emdash/api/revisions/${revisionId}/restore`);
+			break;
+		}
+
+		// ── Settings ─────────────────────────────────────────────────────
+		case "settings_get": {
+			response = await get("/_emdash/api/settings");
+			break;
+		}
+		case "settings_update": {
+			response = await post("/_emdash/api/settings", toolInput);
+			break;
+		}
+
+		// ── Redirects ────────────────────────────────────────────────────
+		case "redirect_list": {
+			response = await get("/_emdash/api/redirects");
+			break;
+		}
+		case "redirect_create": {
+			const { source, destination, type, enabled } = toolInput;
+			response = await post("/_emdash/api/redirects", { source, destination, type, enabled });
+			break;
+		}
+		case "redirect_delete": {
+			const { id } = toolInput;
+			response = await del(`/_emdash/api/redirects/${id}`);
+			break;
+		}
+
+		// ── Comments ─────────────────────────────────────────────────────
+		case "comment_list": {
+			const { status, limit } = toolInput;
+			const params = new URLSearchParams();
+			if (status) params.set("status", String(status));
+			if (limit) params.set("limit", String(limit));
+			const qs = params.toString();
+			response = await get(`/_emdash/api/admin/comments${qs ? `?${qs}` : ""}`);
+			break;
+		}
+		case "comment_moderate": {
+			const { id, status } = toolInput;
+			response = await put(`/_emdash/api/admin/comments/${id}/status`, { status });
+			break;
+		}
+
+		// ── Bylines ──────────────────────────────────────────────────────
+		case "byline_list": {
+			response = await get("/_emdash/api/admin/bylines");
+			break;
+		}
+		case "byline_create": {
+			const { slug, displayName, bio, url } = toolInput;
+			response = await post("/_emdash/api/admin/bylines", { slug, displayName, bio, url });
+			break;
+		}
+
 		default:
 			return { error: `Unknown tool: ${toolName}` };
 	}
