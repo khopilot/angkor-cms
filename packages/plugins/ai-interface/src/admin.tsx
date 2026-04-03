@@ -1,392 +1,128 @@
 /**
- * Token Press AI Interface — Admin Chat Panel
+ * Token Press AI — Admin Chat Panel
  *
- * Full-page AI chat interface. The agentic loop runs entirely on the client:
- * 1. Send messages to /chat (proxy to Anthropic API)
- * 2. If Claude returns tool_use, execute via CMS REST API endpoints
- * 3. Send tool results back, loop until end_turn
- *
- * This avoids Cloudflare Workers' self-fetch restriction.
+ * Full-page AI chat interface with conversation history.
+ * The agentic loop runs client-side: Anthropic proxy → parse SSE →
+ * execute CMS tools locally → loop until done.
  */
 
-import { ArrowUp, CircleNotch, Sparkle, CheckCircle, WarningCircle, ArrowClockwise, Globe, ArrowSquareOut } from "@phosphor-icons/react";
+import {
+	ArrowUp,
+	CircleNotch,
+	Sparkle,
+	CheckCircle,
+	WarningCircle,
+	ArrowClockwise,
+	Globe,
+	ArrowSquareOut,
+	ChatCircle,
+	Trash,
+	Plus,
+	CaretLeft,
+} from "@phosphor-icons/react";
 import type { PluginAdminExports } from "emdash";
 import { apiFetch } from "emdash/plugin-utils";
 import * as React from "react";
 
 const CHAT_URL = "/_emdash/api/plugins/ai-interface/chat";
+const API_BASE = "/_emdash/api/plugins/ai-interface";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface UserMessage {
-	role: "user";
-	content: string;
-}
-
-interface AssistantMessage {
-	role: "assistant";
-	text: string;
-	toolEvents: ToolEvent[];
-	streaming: boolean;
-}
-
-interface ErrorMessage {
-	role: "error";
-	message: string;
-}
-
+interface UserMessage { role: "user"; content: string }
+interface AssistantMessage { role: "assistant"; text: string; toolEvents: ToolEvent[]; streaming: boolean }
+interface ErrorMessage { role: "error"; message: string }
 type ChatMessage = UserMessage | AssistantMessage | ErrorMessage;
 
-interface ToolEvent {
-	type: "executing" | "success" | "error";
-	name: string;
-	error?: string;
+interface ToolEvent { type: "executing" | "success" | "error"; name: string; error?: string }
+
+interface ContentBlock { type: string; id?: string; name?: string; text?: string; input?: Record<string, unknown> }
+
+interface ConversationMeta { id: string; title: string; updatedAt: string }
+
+// ── Unique ID generator ─────────────────────────────────────────────────────
+
+function uid(): string {
+	return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-/** Anthropic content block accumulated from SSE */
-interface ContentBlock {
-	type: string;
-	id?: string;
-	name?: string;
-	text?: string;
-	input?: Record<string, unknown>;
-}
+// ── CMS Tool Executor ───────────────────────────────────────────────────────
 
-// ── CMS Tool Executor (client-side) ─────────────────────────────────────────
-
-async function executeCmsTool(
-	toolName: string,
-	toolInput: Record<string, unknown>,
-): Promise<unknown> {
+async function executeCmsTool(toolName: string, toolInput: Record<string, unknown>): Promise<unknown> {
 	const get = (url: string) => apiFetch(url);
 	const post = (url: string, body?: unknown) =>
-		apiFetch(url, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: body ? JSON.stringify(body) : undefined,
-		});
+		apiFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
 	const put = (url: string, body: unknown) =>
-		apiFetch(url, {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(body),
-		});
+		apiFetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 	const patch = (url: string, body: unknown) =>
-		apiFetch(url, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(body),
-		});
+		apiFetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 	const del = (url: string) => apiFetch(url, { method: "DELETE" });
 
 	let response: Response;
 
 	switch (toolName) {
-		// ── Content ──────────────────────────────────────────────────────
-		case "content_list": {
-			const { collection, status, limit, locale } = toolInput;
-			const params = new URLSearchParams();
-			if (status) params.set("status", String(status));
-			if (limit) params.set("limit", String(limit));
-			if (locale) params.set("locale", String(locale));
-			const qs = params.toString();
-			response = await get(`/_emdash/api/content/${collection}${qs ? `?${qs}` : ""}`);
-			break;
-		}
-		case "content_get": {
-			const { collection, id } = toolInput;
-			response = await get(`/_emdash/api/content/${collection}/${id}`);
-			break;
-		}
-		case "content_create": {
-			const { collection, data, slug, status, locale, translationOf } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}`, {
-				data,
-				slug,
-				status,
-				locale,
-				translationOf,
-			});
-			break;
-		}
-		case "content_update": {
-			const { collection, id, data, slug } = toolInput;
-			response = await patch(`/_emdash/api/content/${collection}/${id}`, {
-				data,
-				slug,
-			});
-			break;
-		}
-		case "content_publish": {
-			const { collection, id } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/publish`);
-			break;
-		}
-		case "content_unpublish": {
-			const { collection, id } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/unpublish`);
-			break;
-		}
-		case "content_delete": {
-			const { collection, id } = toolInput;
-			response = await del(`/_emdash/api/content/${collection}/${id}`);
-			break;
-		}
-		case "content_restore": {
-			const { collection, id } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/restore`);
-			break;
-		}
-		case "content_permanent_delete": {
-			const { collection, id } = toolInput;
-			response = await del(`/_emdash/api/content/${collection}/${id}/permanent`);
-			break;
-		}
-		case "content_duplicate": {
-			const { collection, id } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/duplicate`);
-			break;
-		}
-		case "content_schedule": {
-			const { collection, id, scheduledAt } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/schedule`, { scheduledAt });
-			break;
-		}
-		case "content_compare": {
-			const { collection, id } = toolInput;
-			response = await get(`/_emdash/api/content/${collection}/${id}/compare`);
-			break;
-		}
-		case "content_discard_draft": {
-			const { collection, id } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/discard-draft`);
-			break;
-		}
-		case "content_list_trashed": {
-			const { collection, limit } = toolInput;
-			const params = new URLSearchParams();
-			if (limit) params.set("limit", String(limit));
-			const qs = params.toString();
-			response = await get(`/_emdash/api/content/${collection}/trash${qs ? `?${qs}` : ""}`);
-			break;
-		}
-		case "content_translations": {
-			const { collection, id } = toolInput;
-			response = await get(`/_emdash/api/content/${collection}/${id}/translations`);
-			break;
-		}
-		case "content_set_terms": {
-			const { collection, id, taxonomy, terms } = toolInput;
-			response = await post(`/_emdash/api/content/${collection}/${id}/terms/${taxonomy}`, { terms });
-			break;
-		}
-
-		// ── Schema ──────────────────────────────────────────────────────
-		case "schema_list_collections": {
-			response = await get("/_emdash/api/schema");
-			break;
-		}
-		case "schema_get_collection": {
-			const { collection } = toolInput;
-			response = await get(`/_emdash/api/schema/collections/${collection}`);
-			break;
-		}
-		case "schema_create_collection": {
-			const { slug, label, labelSingular, description, supports } = toolInput;
-			response = await post("/_emdash/api/schema/collections", {
-				slug, label, labelSingular, description, supports,
-			});
-			break;
-		}
-		case "schema_create_field": {
-			const { collection, slug, label, type, required, searchable } = toolInput;
-			response = await post(`/_emdash/api/schema/collections/${collection}/fields`, {
-				slug, label, type, required, searchable,
-			});
-			break;
-		}
-		case "schema_delete_collection": {
-			const { slug, force } = toolInput;
-			const params = force ? "?force=true" : "";
-			response = await del(`/_emdash/api/schema/collections/${slug}${params}`);
-			break;
-		}
-		case "schema_delete_field": {
-			const { collection, fieldSlug } = toolInput;
-			response = await del(`/_emdash/api/schema/collections/${collection}/fields/${fieldSlug}`);
-			break;
-		}
-
-		// ── Media ────────────────────────────────────────────────────────
-		case "media_list": {
-			const { mimeType, limit } = toolInput;
-			const params = new URLSearchParams();
-			if (mimeType) params.set("mimeType", String(mimeType));
-			if (limit) params.set("limit", String(limit));
-			const qs = params.toString();
-			response = await get(`/_emdash/api/media${qs ? `?${qs}` : ""}`);
-			break;
-		}
-		case "media_get": {
-			const { id } = toolInput;
-			response = await get(`/_emdash/api/media/${id}`);
-			break;
-		}
-		case "media_update": {
-			const { id, alt, caption } = toolInput;
-			response = await put(`/_emdash/api/media/${id}`, { alt, caption });
-			break;
-		}
-		case "media_delete": {
-			const { id } = toolInput;
-			response = await del(`/_emdash/api/media/${id}`);
-			break;
-		}
-
-		// ── Search ───────────────────────────────────────────────────────
-		case "search": {
-			const { query, limit } = toolInput;
-			const params = new URLSearchParams({ q: String(query) });
-			if (limit) params.set("limit", String(limit));
-			response = await get(`/_emdash/api/search?${params.toString()}`);
-			break;
-		}
-
-		// ── Taxonomy ─────────────────────────────────────────────────────
-		case "taxonomy_list": {
-			response = await get("/_emdash/api/taxonomies");
-			break;
-		}
-		case "taxonomy_get": {
-			const { taxonomy } = toolInput;
-			response = await get(`/_emdash/api/taxonomies/${taxonomy}`);
-			break;
-		}
-		case "taxonomy_create_term": {
-			const { taxonomy, name, slug, description } = toolInput;
-			response = await post(`/_emdash/api/taxonomies/${taxonomy}/terms`, { name, slug, description });
-			break;
-		}
-		case "taxonomy_update_term": {
-			const { taxonomy, termSlug, name, description } = toolInput;
-			response = await put(`/_emdash/api/taxonomies/${taxonomy}/terms/${termSlug}`, { name, description });
-			break;
-		}
-		case "taxonomy_delete_term": {
-			const { taxonomy, termSlug } = toolInput;
-			response = await del(`/_emdash/api/taxonomies/${taxonomy}/terms/${termSlug}`);
-			break;
-		}
-
-		// ── Menus ────────────────────────────────────────────────────────
-		case "menu_list": {
-			response = await get("/_emdash/api/menus");
-			break;
-		}
-		case "menu_get": {
-			const { menu } = toolInput;
-			response = await get(`/_emdash/api/menus/${menu}`);
-			break;
-		}
-		case "menu_create": {
-			const { name, label } = toolInput;
-			response = await post("/_emdash/api/menus", { name, label });
-			break;
-		}
-		case "menu_add_item": {
-			const { menu, label, url, parentId } = toolInput;
-			response = await post(`/_emdash/api/menus/${menu}/items`, { label, url, parentId });
-			break;
-		}
-		case "menu_delete": {
-			const { menu } = toolInput;
-			response = await del(`/_emdash/api/menus/${menu}`);
-			break;
-		}
-
-		// ── Revisions ────────────────────────────────────────────────────
-		case "revision_list": {
-			const { collection, id } = toolInput;
-			response = await get(`/_emdash/api/content/${collection}/${id}/revisions`);
-			break;
-		}
-		case "revision_restore": {
-			const { revisionId } = toolInput;
-			response = await post(`/_emdash/api/revisions/${revisionId}/restore`);
-			break;
-		}
-
-		// ── Settings ─────────────────────────────────────────────────────
-		case "settings_get": {
-			response = await get("/_emdash/api/settings");
-			break;
-		}
-		case "settings_update": {
-			response = await post("/_emdash/api/settings", toolInput);
-			break;
-		}
-
-		// ── Redirects ────────────────────────────────────────────────────
-		case "redirect_list": {
-			response = await get("/_emdash/api/redirects");
-			break;
-		}
-		case "redirect_create": {
-			const { source, destination, type, enabled } = toolInput;
-			response = await post("/_emdash/api/redirects", { source, destination, type, enabled });
-			break;
-		}
-		case "redirect_delete": {
-			const { id } = toolInput;
-			response = await del(`/_emdash/api/redirects/${id}`);
-			break;
-		}
-
-		// ── Comments ─────────────────────────────────────────────────────
-		case "comment_list": {
-			const { status, limit } = toolInput;
-			const params = new URLSearchParams();
-			if (status) params.set("status", String(status));
-			if (limit) params.set("limit", String(limit));
-			const qs = params.toString();
-			response = await get(`/_emdash/api/admin/comments${qs ? `?${qs}` : ""}`);
-			break;
-		}
-		case "comment_moderate": {
-			const { id, status } = toolInput;
-			response = await put(`/_emdash/api/admin/comments/${id}/status`, { status });
-			break;
-		}
-
-		// ── Bylines ──────────────────────────────────────────────────────
-		case "byline_list": {
-			response = await get("/_emdash/api/admin/bylines");
-			break;
-		}
-		case "byline_create": {
-			const { slug, displayName, bio, url } = toolInput;
-			response = await post("/_emdash/api/admin/bylines", { slug, displayName, bio, url });
-			break;
-		}
-
-		default:
-			return { error: `Unknown tool: ${toolName}` };
+		case "content_list": { const { collection, status, limit, locale } = toolInput; const p = new URLSearchParams(); if (status) p.set("status", String(status)); if (limit) p.set("limit", String(limit)); if (locale) p.set("locale", String(locale)); const qs = p.toString(); response = await get(`/_emdash/api/content/${collection}${qs ? `?${qs}` : ""}`); break; }
+		case "content_get": { const { collection, id } = toolInput; response = await get(`/_emdash/api/content/${collection}/${id}`); break; }
+		case "content_create": { const { collection, data, slug, status, locale, translationOf } = toolInput; response = await post(`/_emdash/api/content/${collection}`, { data, slug, status, locale, translationOf }); break; }
+		case "content_update": { const { collection, id, data, slug } = toolInput; response = await patch(`/_emdash/api/content/${collection}/${id}`, { data, slug }); break; }
+		case "content_publish": { const { collection, id } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/publish`); break; }
+		case "content_unpublish": { const { collection, id } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/unpublish`); break; }
+		case "content_delete": { const { collection, id } = toolInput; response = await del(`/_emdash/api/content/${collection}/${id}`); break; }
+		case "content_restore": { const { collection, id } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/restore`); break; }
+		case "content_permanent_delete": { const { collection, id } = toolInput; response = await del(`/_emdash/api/content/${collection}/${id}/permanent`); break; }
+		case "content_duplicate": { const { collection, id } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/duplicate`); break; }
+		case "content_schedule": { const { collection, id, scheduledAt } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/schedule`, { scheduledAt }); break; }
+		case "content_compare": { const { collection, id } = toolInput; response = await get(`/_emdash/api/content/${collection}/${id}/compare`); break; }
+		case "content_discard_draft": { const { collection, id } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/discard-draft`); break; }
+		case "content_list_trashed": { const { collection, limit } = toolInput; const p = new URLSearchParams(); if (limit) p.set("limit", String(limit)); const qs = p.toString(); response = await get(`/_emdash/api/content/${collection}/trash${qs ? `?${qs}` : ""}`); break; }
+		case "content_translations": { const { collection, id } = toolInput; response = await get(`/_emdash/api/content/${collection}/${id}/translations`); break; }
+		case "content_set_terms": { const { collection, id, taxonomy, terms } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/terms/${taxonomy}`, { terms }); break; }
+		case "schema_list_collections": { response = await get("/_emdash/api/schema"); break; }
+		case "schema_get_collection": { const { collection } = toolInput; response = await get(`/_emdash/api/schema/collections/${collection}`); break; }
+		case "schema_create_collection": { const { slug, label, labelSingular, description, supports } = toolInput; response = await post("/_emdash/api/schema/collections", { slug, label, labelSingular, description, supports }); break; }
+		case "schema_create_field": { const { collection, slug, label, type, required, searchable } = toolInput; response = await post(`/_emdash/api/schema/collections/${collection}/fields`, { slug, label, type, required, searchable }); break; }
+		case "schema_delete_collection": { const { slug, force } = toolInput; response = await del(`/_emdash/api/schema/collections/${slug}${force ? "?force=true" : ""}`); break; }
+		case "schema_delete_field": { const { collection, fieldSlug } = toolInput; response = await del(`/_emdash/api/schema/collections/${collection}/fields/${fieldSlug}`); break; }
+		case "media_list": { const { mimeType, limit } = toolInput; const p = new URLSearchParams(); if (mimeType) p.set("mimeType", String(mimeType)); if (limit) p.set("limit", String(limit)); const qs = p.toString(); response = await get(`/_emdash/api/media${qs ? `?${qs}` : ""}`); break; }
+		case "media_get": { const { id } = toolInput; response = await get(`/_emdash/api/media/${id}`); break; }
+		case "media_update": { const { id, alt, caption } = toolInput; response = await put(`/_emdash/api/media/${id}`, { alt, caption }); break; }
+		case "media_delete": { const { id } = toolInput; response = await del(`/_emdash/api/media/${id}`); break; }
+		case "search": { const { query, limit } = toolInput; const p = new URLSearchParams({ q: String(query) }); if (limit) p.set("limit", String(limit)); response = await get(`/_emdash/api/search?${p.toString()}`); break; }
+		case "taxonomy_list": { response = await get("/_emdash/api/taxonomies"); break; }
+		case "taxonomy_get": { const { taxonomy } = toolInput; response = await get(`/_emdash/api/taxonomies/${taxonomy}`); break; }
+		case "taxonomy_create_term": { const { taxonomy, name, slug, description } = toolInput; response = await post(`/_emdash/api/taxonomies/${taxonomy}/terms`, { name, slug, description }); break; }
+		case "taxonomy_update_term": { const { taxonomy, termSlug, name, description } = toolInput; response = await put(`/_emdash/api/taxonomies/${taxonomy}/terms/${termSlug}`, { name, description }); break; }
+		case "taxonomy_delete_term": { const { taxonomy, termSlug } = toolInput; response = await del(`/_emdash/api/taxonomies/${taxonomy}/terms/${termSlug}`); break; }
+		case "menu_list": { response = await get("/_emdash/api/menus"); break; }
+		case "menu_get": { const { menu } = toolInput; response = await get(`/_emdash/api/menus/${menu}`); break; }
+		case "menu_create": { const { name, label } = toolInput; response = await post("/_emdash/api/menus", { name, label }); break; }
+		case "menu_add_item": { const { menu, type, label, customUrl, referenceCollection, referenceId, parentId } = toolInput; response = await post(`/_emdash/api/menus/${menu}/items`, { type: type ?? "custom", label, customUrl, referenceCollection, referenceId, parentId }); break; }
+		case "menu_delete": { const { menu } = toolInput; response = await del(`/_emdash/api/menus/${menu}`); break; }
+		case "revision_list": { const { collection, id } = toolInput; response = await get(`/_emdash/api/content/${collection}/${id}/revisions`); break; }
+		case "revision_restore": { const { revisionId } = toolInput; response = await post(`/_emdash/api/revisions/${revisionId}/restore`); break; }
+		case "settings_get": { response = await get("/_emdash/api/settings"); break; }
+		case "settings_update": { response = await post("/_emdash/api/settings", toolInput); break; }
+		case "redirect_list": { response = await get("/_emdash/api/redirects"); break; }
+		case "redirect_create": { const { source, destination, type, enabled } = toolInput; response = await post("/_emdash/api/redirects", { source, destination, type, enabled }); break; }
+		case "redirect_delete": { const { id } = toolInput; response = await del(`/_emdash/api/redirects/${id}`); break; }
+		case "comment_list": { const { status, limit } = toolInput; const p = new URLSearchParams(); if (status) p.set("status", String(status)); if (limit) p.set("limit", String(limit)); const qs = p.toString(); response = await get(`/_emdash/api/admin/comments${qs ? `?${qs}` : ""}`); break; }
+		case "comment_moderate": { const { id, status } = toolInput; response = await put(`/_emdash/api/admin/comments/${id}/status`, { status }); break; }
+		case "byline_list": { response = await get("/_emdash/api/admin/bylines"); break; }
+		case "byline_create": { const { slug, displayName, bio, url } = toolInput; response = await post("/_emdash/api/admin/bylines", { slug, displayName, bio, url }); break; }
+		case "web_browse": { const { url } = toolInput; response = await apiFetch(`${API_BASE}/browse`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }); break; }
+		default: return { error: `Unknown tool: ${toolName}` };
 	}
 
 	if (!response.ok) {
 		const text = await response.text().catch(() => response.statusText);
-		try {
-			return { error: `API ${response.status}`, details: JSON.parse(text) };
-		} catch {
-			return { error: `API ${response.status}: ${text}` };
-		}
+		try { return { error: `API ${response.status}`, details: JSON.parse(text) }; }
+		catch { return { error: `API ${response.status}: ${text}` }; }
 	}
 	return response.json();
 }
 
 // ── Anthropic SSE Parser ────────────────────────────────────────────────────
 
-/** Parse an Anthropic streaming response, calling back on events */
 async function parseAnthropicStream(
 	response: Response,
 	onText: (text: string) => void,
@@ -403,7 +139,6 @@ async function parseAnthropicStream(
 	while (true) {
 		const { done, value } = await reader.read();
 		if (done) break;
-
 		buffer += dec.decode(value, { stream: true });
 		const lines = buffer.split("\n");
 		buffer = lines.pop() ?? "";
@@ -412,13 +147,8 @@ async function parseAnthropicStream(
 			if (!line.startsWith("data: ")) continue;
 			const chunk = line.slice(6);
 			if (chunk === "[DONE]") continue;
-
 			let event: Record<string, unknown>;
-			try {
-				event = JSON.parse(chunk) as Record<string, unknown>;
-			} catch {
-				continue;
-			}
+			try { event = JSON.parse(chunk) as Record<string, unknown>; } catch { continue; }
 
 			switch (event.type) {
 				case "content_block_start": {
@@ -426,95 +156,30 @@ async function parseAnthropicStream(
 					const block = event.content_block as ContentBlock;
 					blocks[currentIdx] = { type: block.type, id: block.id, name: block.name };
 					inputBuffers[currentIdx] = "";
-					if (block.type === "tool_use" && block.name) {
-						onToolStart(block.name);
-					}
+					if (block.type === "tool_use" && block.name) onToolStart(block.name);
 					break;
 				}
 				case "content_block_delta": {
 					const delta = event.delta as { type: string; text?: string; partial_json?: string };
-					if (delta.type === "text_delta" && delta.text) {
-						onText(delta.text);
-						const b = blocks[currentIdx];
-						if (b) b.text = (b.text ?? "") + delta.text;
-					} else if (delta.type === "input_json_delta" && delta.partial_json) {
-						inputBuffers[currentIdx] = (inputBuffers[currentIdx] ?? "") + delta.partial_json;
-					}
+					if (delta.type === "text_delta" && delta.text) { onText(delta.text); const b = blocks[currentIdx]; if (b) b.text = (b.text ?? "") + delta.text; }
+					else if (delta.type === "input_json_delta" && delta.partial_json) { inputBuffers[currentIdx] = (inputBuffers[currentIdx] ?? "") + delta.partial_json; }
 					break;
 				}
 				case "content_block_stop": {
 					const b = blocks[currentIdx];
-					if (b?.type === "tool_use") {
-						try {
-							b.input = JSON.parse(inputBuffers[currentIdx] ?? "{}");
-						} catch {
-							b.input = {};
-						}
-					}
+					if (b?.type === "tool_use") { try { b.input = JSON.parse(inputBuffers[currentIdx] ?? "{}"); } catch { b.input = {}; } }
 					break;
 				}
-				case "message_delta": {
-					const delta = event.delta as { stop_reason?: string };
-					if (delta.stop_reason) stopReason = delta.stop_reason;
-					break;
-				}
-				case "error": {
-					const err = event.error as { message?: string };
-					throw new Error(err?.message ?? "Anthropic API error");
-				}
+				case "message_delta": { const delta = event.delta as { stop_reason?: string }; if (delta.stop_reason) stopReason = delta.stop_reason; break; }
+				case "error": { const err = event.error as { message?: string }; throw new Error(err?.message ?? "Anthropic API error"); }
 			}
 		}
 	}
-
 	return { stopReason, blocks };
 }
 
-// ── Quick Actions ─────────────────────────────────────────────────────────────
+// ── Markdown Renderer ───────────────────────────────────────────────────────
 
-const QUICK_ACTIONS = [
-	{ label: "Build my website", prompt: "Help me build a complete website from scratch. Ask me what kind of site I want, then create the collections, fields, navigation menu, and sample content — and publish everything so it's live immediately." },
-	{ label: "Write & publish a post", prompt: "Write a blog post about the latest trends in our industry. Make it engaging, then publish it so it appears on the live website." },
-	{ label: "Set up site structure", prompt: "Show me the current site structure (collections and fields), then help me improve it based on best practices." },
-	{ label: "Add a new section", prompt: "Create a new content collection for my website (e.g., services, team, testimonials, portfolio). Add the right fields and publish some sample content." },
-	{ label: "Update site settings", prompt: "Show me the current site settings (title, tagline) and help me update them." },
-	{ label: "View all content", prompt: "List all published content across all collections so I can see what's on my website right now." },
-];
-
-// ── Tool Event Badge ──────────────────────────────────────────────────────────
-
-function ToolBadge({ event }: { event: ToolEvent }) {
-	const toolLabel = event.name.replace(/_/g, " ");
-
-	if (event.type === "executing") {
-		return (
-			<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs dark:bg-blue-900/30 dark:text-blue-300">
-				<CircleNotch className="h-3 w-3 animate-spin" />
-				{toolLabel}
-			</span>
-		);
-	}
-	if (event.type === "success") {
-		return (
-			<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs dark:bg-green-900/30 dark:text-green-400">
-				<CheckCircle className="h-3 w-3" />
-				{toolLabel}
-			</span>
-		);
-	}
-	return (
-		<span
-			title={event.error}
-			className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs dark:bg-red-900/30 dark:text-red-400"
-		>
-			<WarningCircle className="h-3 w-3" />
-			{toolLabel}
-		</span>
-	);
-}
-
-// ── Message Bubble ────────────────────────────────────────────────────────────
-
-/** Render basic markdown: **bold**, `code`, ```blocks```, links, lists, headings */
 function renderMarkdown(text: string): React.ReactNode {
 	const lines = text.split("\n");
 	const elements: React.ReactNode[] = [];
@@ -523,135 +188,124 @@ function renderMarkdown(text: string): React.ReactNode {
 	while (i < lines.length) {
 		const line = lines[i]!;
 
-		// Code blocks
 		if (line.startsWith("```")) {
+			const lang = line.slice(3).trim();
 			const codeLines: string[] = [];
 			i++;
-			while (i < lines.length && !lines[i]!.startsWith("```")) {
-				codeLines.push(lines[i]!);
-				i++;
-			}
-			i++; // skip closing ```
+			while (i < lines.length && !lines[i]!.startsWith("```")) { codeLines.push(lines[i]!); i++; }
+			i++;
 			elements.push(
-				<pre key={elements.length} className="bg-black/5 dark:bg-white/5 rounded-lg p-3 text-xs font-mono overflow-x-auto my-2">
-					<code>{codeLines.join("\n")}</code>
-				</pre>,
+				<div key={elements.length} className="my-3 rounded-lg overflow-hidden border border-border/50">
+					{lang && <div className="px-3 py-1 text-[10px] font-mono text-muted-foreground bg-muted/50 border-b border-border/50">{lang}</div>}
+					<pre className="bg-muted/30 p-3 text-xs font-mono overflow-x-auto"><code>{codeLines.join("\n")}</code></pre>
+				</div>,
 			);
 			continue;
 		}
 
-		// Headings
 		const headingMatch = line.match(/^(#{1,3})\s+(.+)/);
 		if (headingMatch) {
 			const level = headingMatch[1]!.length;
-			const content = headingMatch[2]!;
 			const Tag = `h${level + 1}` as "h2" | "h3" | "h4";
-			elements.push(
-				<Tag key={elements.length} className={`font-semibold mt-3 mb-1 ${level === 1 ? "text-base" : "text-sm"}`}>
-					{formatInline(content)}
-				</Tag>,
-			);
-			i++;
-			continue;
+			elements.push(<Tag key={elements.length} className={`font-semibold mt-4 mb-1.5 ${level === 1 ? "text-base" : "text-sm"}`}>{fmtInline(headingMatch[2]!)}</Tag>);
+			i++; continue;
 		}
 
-		// List items
 		if (line.match(/^[-*]\s/)) {
-			const listItems: string[] = [];
-			while (i < lines.length && lines[i]!.match(/^[-*]\s/)) {
-				listItems.push(lines[i]!.replace(/^[-*]\s/, ""));
-				i++;
-			}
-			elements.push(
-				<ul key={elements.length} className="list-disc list-inside space-y-0.5 my-1">
-					{listItems.map((item, j) => (
-						<li key={j}>{formatInline(item)}</li>
-					))}
-				</ul>,
-			);
+			const items: string[] = [];
+			while (i < lines.length && lines[i]!.match(/^[-*]\s/)) { items.push(lines[i]!.replace(/^[-*]\s/, "")); i++; }
+			elements.push(<ul key={elements.length} className="list-disc list-inside space-y-1 my-2 ml-1">{items.map((item, j) => <li key={j}>{fmtInline(item)}</li>)}</ul>);
 			continue;
 		}
 
-		// Numbered list
 		if (line.match(/^\d+\.\s/)) {
-			const listItems: string[] = [];
-			while (i < lines.length && lines[i]!.match(/^\d+\.\s/)) {
-				listItems.push(lines[i]!.replace(/^\d+\.\s/, ""));
-				i++;
-			}
-			elements.push(
-				<ol key={elements.length} className="list-decimal list-inside space-y-0.5 my-1">
-					{listItems.map((item, j) => (
-						<li key={j}>{formatInline(item)}</li>
-					))}
-				</ol>,
-			);
+			const items: string[] = [];
+			while (i < lines.length && lines[i]!.match(/^\d+\.\s/)) { items.push(lines[i]!.replace(/^\d+\.\s/, "")); i++; }
+			elements.push(<ol key={elements.length} className="list-decimal list-inside space-y-1 my-2 ml-1">{items.map((item, j) => <li key={j}>{fmtInline(item)}</li>)}</ol>);
 			continue;
 		}
 
-		// Empty line = paragraph break
-		if (!line.trim()) {
-			elements.push(<div key={elements.length} className="h-2" />);
-			i++;
-			continue;
-		}
-
-		// Regular paragraph
-		elements.push(
-			<p key={elements.length} className="my-0.5">{formatInline(line)}</p>,
-		);
+		if (line.startsWith("---") || line.startsWith("***")) { elements.push(<hr key={elements.length} className="my-3 border-border/50" />); i++; continue; }
+		if (!line.trim()) { elements.push(<div key={elements.length} className="h-2" />); i++; continue; }
+		elements.push(<p key={elements.length} className="my-1 leading-relaxed">{fmtInline(line)}</p>);
 		i++;
 	}
-
 	return elements;
 }
 
-/** Format inline markdown: **bold**, *italic*, `code`, [links](url) */
-function formatInline(text: string): React.ReactNode {
+function fmtInline(text: string): React.ReactNode {
 	const parts: React.ReactNode[] = [];
-	let remaining = text;
-	let key = 0;
-
-	while (remaining) {
-		// Code
-		const codeMatch = remaining.match(/^(.*?)`([^`]+)`/);
-		if (codeMatch) {
-			if (codeMatch[1]) parts.push(formatInlineSimple(codeMatch[1], key++));
-			parts.push(
-				<code key={key++} className="bg-black/5 dark:bg-white/10 px-1 py-0.5 rounded text-xs font-mono">
-					{codeMatch[2]}
-				</code>,
-			);
-			remaining = remaining.slice(codeMatch[0].length);
-			continue;
-		}
-
-		// Bold
-		const boldMatch = remaining.match(/^(.*?)\*\*([^*]+)\*\*/);
-		if (boldMatch) {
-			if (boldMatch[1]) parts.push(formatInlineSimple(boldMatch[1], key++));
-			parts.push(<strong key={key++}>{boldMatch[2]}</strong>);
-			remaining = remaining.slice(boldMatch[0].length);
-			continue;
-		}
-
-		// No more matches — push remaining
-		parts.push(formatInlineSimple(remaining, key++));
+	let rest = text;
+	let k = 0;
+	while (rest) {
+		const cm = rest.match(/^(.*?)`([^`]+)`/);
+		if (cm) { if (cm[1]) parts.push(<React.Fragment key={k++}>{cm[1]}</React.Fragment>); parts.push(<code key={k++} className="bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono">{cm[2]}</code>); rest = rest.slice(cm[0].length); continue; }
+		const bm = rest.match(/^(.*?)\*\*([^*]+)\*\*/);
+		if (bm) { if (bm[1]) parts.push(<React.Fragment key={k++}>{bm[1]}</React.Fragment>); parts.push(<strong key={k++}>{bm[2]}</strong>); rest = rest.slice(bm[0].length); continue; }
+		parts.push(<React.Fragment key={k++}>{rest}</React.Fragment>);
 		break;
 	}
-
 	return parts.length === 1 ? parts[0] : parts;
 }
 
-function formatInlineSimple(text: string, key: number): React.ReactNode {
-	return <React.Fragment key={key}>{text}</React.Fragment>;
+// ── Quick Actions ─────────────────────────────────────────────────────────────
+
+const QUICK_ACTIONS = [
+	{ label: "Build my website", prompt: "Help me build a complete website from scratch. Ask me what kind of site I want, then create the collections, fields, navigation menu, and sample content — and publish everything so it's live immediately." },
+	{ label: "Write & publish a post", prompt: "Write a blog post about the latest trends in our industry. Make it engaging, then publish it so it appears on the live website." },
+	{ label: "Set up site structure", prompt: "Show me the current site structure (collections and fields), then help me improve it based on best practices." },
+	{ label: "Add a new section", prompt: "Create a new content collection for my website (e.g., services, team, testimonials). Add the right fields and publish some sample content." },
+	{ label: "Browse a website", prompt: "I want you to look at a website for inspiration. Visit https://example.com and help me build something similar." },
+	{ label: "View all content", prompt: "List all published content across all collections so I can see what's on my website right now." },
+];
+
+// ── Tool Badges (grouped) ────────────────────────────────────────────────────
+
+function ToolBadges({ events }: { events: ToolEvent[] }) {
+	// Group by tool name, keep latest status
+	const grouped = new Map<string, { count: number; status: ToolEvent["type"]; error?: string }>();
+	for (const ev of events) {
+		const existing = grouped.get(ev.name);
+		if (existing) {
+			existing.count++;
+			existing.status = ev.type;
+			if (ev.error) existing.error = ev.error;
+		} else {
+			grouped.set(ev.name, { count: 1, status: ev.type, error: ev.error });
+		}
+	}
+
+	return (
+		<div className="flex flex-wrap gap-1.5 mb-2">
+			{Array.from(grouped.entries()).map(([name, info]) => {
+				const label = name.replace(/_/g, " ");
+				const count = info.count > 1 ? ` x${info.count}` : "";
+				const cls =
+					info.status === "executing"
+						? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+						: info.status === "success"
+							? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
+							: "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400";
+				const Icon = info.status === "executing" ? CircleNotch : info.status === "success" ? CheckCircle : WarningCircle;
+
+				return (
+					<span key={name} title={info.error} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${cls}`}>
+						<Icon className={`h-3 w-3 ${info.status === "executing" ? "animate-spin" : ""}`} />
+						{label}{count}
+					</span>
+				);
+			})}
+		</div>
+	);
 }
+
+// ── Message Bubble ────────────────────────────────────────────────────────────
 
 function MessageBubble({ msg }: { msg: ChatMessage }) {
 	if (msg.role === "user") {
 		return (
-			<div className="flex justify-end">
-				<div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-blue-600 text-white px-4 py-2.5 text-sm whitespace-pre-wrap">
+			<div className="flex justify-end mb-4">
+				<div className="max-w-[75%] rounded-2xl rounded-tr-md bg-blue-600 text-white px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap shadow-sm">
 					{msg.content}
 				</div>
 			</div>
@@ -660,8 +314,8 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
 	if (msg.role === "error") {
 		return (
-			<div className="flex justify-start">
-				<div className="max-w-[80%] rounded-2xl rounded-tl-sm border border-red-200 bg-red-50 text-red-700 px-4 py-2.5 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+			<div className="flex justify-start mb-4">
+				<div className="max-w-[75%] rounded-2xl rounded-tl-md border border-red-200 bg-red-50 text-red-700 px-4 py-2.5 text-sm dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
 					{msg.message}
 				</div>
 			</div>
@@ -669,36 +323,118 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 	}
 
 	return (
-		<div className="flex justify-start gap-2.5">
-			<div className="flex-shrink-0 mt-1 h-7 w-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-				<Sparkle className="h-4 w-4 text-white" weight="fill" />
+		<div className="flex justify-start gap-3 mb-4">
+			<div className="flex-shrink-0 mt-1 h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+				<Sparkle className="h-3.5 w-3.5 text-white" weight="fill" />
 			</div>
-			<div className="flex-1 min-w-0 space-y-2">
-				{msg.toolEvents.length > 0 && (
-					<div className="flex flex-wrap gap-1.5">
-						{msg.toolEvents.map((ev, i) => (
-							<ToolBadge key={i} event={ev} />
-						))}
-					</div>
-				)}
+			<div className="flex-1 min-w-0 max-w-[85%]">
+				{msg.toolEvents.length > 0 && <ToolBadges events={msg.toolEvents} />}
 				{(msg.text || msg.streaming) && (
-					<div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm">
+					<div className="rounded-2xl rounded-tl-md bg-muted/60 px-4 py-3 text-sm leading-relaxed">
 						{msg.text ? renderMarkdown(msg.text) : null}
 						{msg.streaming && !msg.text && (
-							<span className="inline-flex gap-0.5">
+							<span className="inline-flex gap-1">
 								{[0, 1, 2].map((i) => (
-									<span
-										key={i}
-										className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce"
-										style={{ animationDelay: `${i * 0.15}s` }}
-									/>
+									<span key={i} className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
 								))}
 							</span>
 						)}
-						{msg.streaming && msg.text && (
-							<span className="ml-0.5 inline-block h-4 w-0.5 bg-current animate-pulse" />
-						)}
+						{msg.streaming && msg.text && <span className="ml-0.5 inline-block h-4 w-0.5 bg-blue-500 animate-pulse rounded-full" />}
 					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+// ── Conversation History Sidebar ──────────────────────────────────────────────
+
+function HistorySidebar({
+	conversations,
+	activeId,
+	onSelect,
+	onDelete,
+	onNew,
+	isOpen,
+	onToggle,
+}: {
+	conversations: ConversationMeta[];
+	activeId: string | null;
+	onSelect: (id: string) => void;
+	onDelete: (id: string) => void;
+	onNew: () => void;
+	isOpen: boolean;
+	onToggle: () => void;
+}) {
+	const grouped = React.useMemo(() => {
+		const today = new Date(); today.setHours(0, 0, 0, 0);
+		const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+		const week = new Date(today); week.setDate(week.getDate() - 7);
+
+		const groups: { label: string; items: ConversationMeta[] }[] = [
+			{ label: "Today", items: [] },
+			{ label: "Yesterday", items: [] },
+			{ label: "This week", items: [] },
+			{ label: "Older", items: [] },
+		];
+
+		for (const c of conversations) {
+			const d = new Date(c.updatedAt);
+			if (d >= today) groups[0]!.items.push(c);
+			else if (d >= yesterday) groups[1]!.items.push(c);
+			else if (d >= week) groups[2]!.items.push(c);
+			else groups[3]!.items.push(c);
+		}
+		return groups.filter((g) => g.items.length > 0);
+	}, [conversations]);
+
+	if (!isOpen) {
+		return (
+			<button onClick={onToggle} className="absolute left-0 top-4 z-10 p-2 rounded-r-lg bg-muted hover:bg-muted/80 transition-colors" title="Show history">
+				<ChatCircle className="h-4 w-4" />
+			</button>
+		);
+	}
+
+	return (
+		<div className="w-64 flex-shrink-0 border-r flex flex-col bg-muted/20">
+			<div className="p-3 border-b flex items-center justify-between">
+				<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">History</span>
+				<div className="flex items-center gap-1">
+					<button onClick={onNew} className="p-1.5 rounded-md hover:bg-muted transition-colors" title="New chat">
+						<Plus className="h-3.5 w-3.5" />
+					</button>
+					<button onClick={onToggle} className="p-1.5 rounded-md hover:bg-muted transition-colors" title="Hide">
+						<CaretLeft className="h-3.5 w-3.5" />
+					</button>
+				</div>
+			</div>
+			<div className="flex-1 overflow-y-auto p-2 space-y-3">
+				{grouped.map((group) => (
+					<div key={group.label}>
+						<div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{group.label}</div>
+						{group.items.map((c) => (
+							<div
+								key={c.id}
+								className={`group flex items-center gap-1 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors ${
+									c.id === activeId ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" : "hover:bg-muted"
+								}`}
+							>
+								<button onClick={() => onSelect(c.id)} className="flex-1 text-left truncate min-w-0">
+									{c.title}
+								</button>
+								<button
+									onClick={(e) => { e.stopPropagation(); onDelete(c.id); }}
+									className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-600 transition-all"
+								>
+									<Trash className="h-3 w-3" />
+								</button>
+							</div>
+						))}
+					</div>
+				))}
+				{conversations.length === 0 && (
+					<p className="text-xs text-muted-foreground text-center py-4">No conversations yet</p>
 				)}
 			</div>
 		</div>
@@ -711,13 +447,48 @@ function ChatPage() {
 	const [messages, setMessages] = React.useState<ChatMessage[]>([]);
 	const [input, setInput] = React.useState("");
 	const [isStreaming, setIsStreaming] = React.useState(false);
+	const [conversationId, setConversationId] = React.useState<string>(uid());
+	const [conversations, setConversations] = React.useState<ConversationMeta[]>([]);
+	const [historyOpen, setHistoryOpen] = React.useState(true);
 	const bottomRef = React.useRef<HTMLDivElement>(null);
 	const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 	const abortRef = React.useRef<AbortController | null>(null);
 
+	// Auto-scroll
+	React.useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+	// Load conversation list on mount
 	React.useEffect(() => {
-		bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages]);
+		void (async () => {
+			try {
+				const res = await apiFetch(`${API_BASE}/conversations`);
+				if (res.ok) {
+					const data = await res.json() as { data?: ConversationMeta[] };
+					setConversations(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data as unknown as ConversationMeta[] : []);
+				}
+			} catch { /* ignore */ }
+		})();
+	}, []);
+
+	// Auto-save conversation after streaming ends
+	const saveConversation = React.useCallback(async (msgs: ChatMessage[], convId: string) => {
+		if (msgs.length === 0) return;
+		const firstUser = msgs.find((m) => m.role === "user");
+		const title = firstUser?.role === "user" ? firstUser.content.slice(0, 60) : "New conversation";
+		try {
+			await apiFetch(`${API_BASE}/conversations/save`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ id: convId, title, messages: msgs }),
+			});
+			// Refresh list
+			const res = await apiFetch(`${API_BASE}/conversations`);
+			if (res.ok) {
+				const data = await res.json() as { data?: ConversationMeta[] };
+				setConversations(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data as unknown as ConversationMeta[] : []);
+			}
+		} catch { /* ignore */ }
+	}, []);
 
 	const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
 		setInput(e.target.value);
@@ -725,16 +496,11 @@ function ChatPage() {
 		e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
 	};
 
-	/** Update the last assistant message in the messages array */
-	const updateLastAssistant = (
-		updater: (msg: AssistantMessage) => AssistantMessage,
-	) => {
+	const updateLastAssistant = (updater: (msg: AssistantMessage) => AssistantMessage) => {
 		setMessages((prev) => {
 			const next = [...prev];
 			const last = next[next.length - 1];
-			if (last?.role === "assistant") {
-				next[next.length - 1] = updater(last);
-			}
+			if (last?.role === "assistant") next[next.length - 1] = updater(last);
 			return next;
 		});
 	};
@@ -742,27 +508,25 @@ function ChatPage() {
 	const send = async (text: string) => {
 		const trimmed = text.trim();
 		if (!trimmed || isStreaming) return;
-
 		setInput("");
 		if (textareaRef.current) textareaRef.current.style.height = "auto";
 
 		const userMsg: UserMessage = { role: "user", content: trimmed };
 		const assistantMsg: AssistantMessage = { role: "assistant", text: "", toolEvents: [], streaming: true };
-		setMessages((prev) => [...prev, userMsg, assistantMsg]);
+		const newMessages = [...messages, userMsg, assistantMsg];
+		setMessages(newMessages);
 		setIsStreaming(true);
 
 		const abort = new AbortController();
 		abortRef.current = abort;
 
 		try {
-			// Build conversation for API (user/assistant messages only)
 			const apiMessages: Array<{ role: string; content: unknown }> = [];
 			for (const m of messages) {
 				if (m.role === "user") apiMessages.push({ role: "user", content: m.content });
 				else if (m.role === "assistant") apiMessages.push({ role: "assistant", content: m.text });
 			}
 			apiMessages.push({ role: "user", content: trimmed });
-
 			await runAgenticLoop(apiMessages, abort.signal);
 		} catch (err) {
 			if ((err as { name?: string }).name !== "AbortError") {
@@ -770,11 +534,8 @@ function ChatPage() {
 				setMessages((prev) => {
 					const next = [...prev];
 					const last = next[next.length - 1];
-					if (last?.role === "assistant" && !last.text) {
-						next[next.length - 1] = { role: "error", message: msg };
-					} else {
-						next.push({ role: "error", message: msg });
-					}
+					if (last?.role === "assistant" && !last.text) next[next.length - 1] = { role: "error", message: msg };
+					else next.push({ role: "error", message: msg });
 					return next;
 				});
 			}
@@ -782,240 +543,196 @@ function ChatPage() {
 			updateLastAssistant((m) => ({ ...m, streaming: false }));
 			setIsStreaming(false);
 			abortRef.current = null;
+			// Save after response completes
+			setMessages((finalMsgs) => { void saveConversation(finalMsgs, conversationId); return finalMsgs; });
 		}
 	};
 
-	/**
-	 * Client-side agentic loop:
-	 * 1. Call /chat (proxy to Anthropic)
-	 * 2. Parse SSE stream
-	 * 3. If tool_use → execute locally → add results → call /chat again
-	 * 4. Loop until end_turn
-	 */
-	async function runAgenticLoop(
-		conversation: Array<{ role: string; content: unknown }>,
-		signal: AbortSignal,
-	) {
+	async function runAgenticLoop(conversation: Array<{ role: string; content: unknown }>, signal: AbortSignal) {
 		const conv = [...conversation];
-
 		for (let turn = 0; turn < 20; turn++) {
 			if (signal.aborted) break;
-
-			// Call proxy endpoint
 			const response = await apiFetch(CHAT_URL, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ messages: conv }),
 				signal,
 			});
-
 			if (!response.ok || !response.body) {
 				const errBody = await response.text().catch(() => "");
 				let errMsg = `Server error: ${response.status}`;
-				try {
-					const parsed = JSON.parse(errBody) as { error?: string };
-					if (parsed.error) errMsg = parsed.error;
-				} catch {
-					// use default
-				}
+				try { const parsed = JSON.parse(errBody) as { error?: string }; if (parsed.error) errMsg = parsed.error; } catch { /* */ }
 				throw new Error(errMsg);
 			}
-
-			// Parse Anthropic SSE stream
 			const { stopReason, blocks } = await parseAnthropicStream(
 				response,
-				// onText
-				(text) => {
-					updateLastAssistant((m) => ({ ...m, text: m.text + text }));
-				},
-				// onToolStart
-				(name) => {
-					updateLastAssistant((m) => ({
-						...m,
-						toolEvents: [...m.toolEvents, { type: "executing", name }],
-					}));
-				},
+				(text) => updateLastAssistant((m) => ({ ...m, text: m.text + text })),
+				(name) => updateLastAssistant((m) => ({ ...m, toolEvents: [...m.toolEvents, { type: "executing", name }] })),
 			);
-
-			// Build assistant content for conversation
 			const assistantContent = blocks.map((b) => {
 				if (b.type === "text") return { type: "text", text: b.text ?? "" };
 				if (b.type === "tool_use") return { type: "tool_use", id: b.id, name: b.name, input: b.input ?? {} };
 				return b;
 			});
 			conv.push({ role: "assistant", content: assistantContent });
-
 			if (stopReason !== "tool_use") break;
 
-			// Execute tools locally
 			const toolResults: Array<{ type: "tool_result"; tool_use_id: string; content: string }> = [];
-
 			for (const block of blocks) {
 				if (block.type !== "tool_use" || !block.id || !block.name) continue;
 				if (signal.aborted) break;
-
 				try {
 					const result = await executeCmsTool(block.name, block.input ?? {});
-					toolResults.push({
-						type: "tool_result",
-						tool_use_id: block.id,
-						content: JSON.stringify(result),
-					});
-					// Update tool event to success
-					updateLastAssistant((m) => ({
-						...m,
-						toolEvents: m.toolEvents.map((ev) =>
-							ev.name === block.name && ev.type === "executing"
-								? { ...ev, type: "success" as const }
-								: ev,
-						),
-					}));
+					toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) });
+					updateLastAssistant((m) => ({ ...m, toolEvents: m.toolEvents.map((ev) => ev.name === block.name && ev.type === "executing" ? { ...ev, type: "success" as const } : ev) }));
 				} catch (err) {
 					const errMsg = err instanceof Error ? err.message : String(err);
-					toolResults.push({
-						type: "tool_result",
-						tool_use_id: block.id,
-						content: JSON.stringify({ error: errMsg }),
-					});
-					updateLastAssistant((m) => ({
-						...m,
-						toolEvents: m.toolEvents.map((ev) =>
-							ev.name === block.name && ev.type === "executing"
-								? { ...ev, type: "error" as const, error: errMsg }
-								: ev,
-						),
-					}));
+					toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify({ error: errMsg }) });
+					updateLastAssistant((m) => ({ ...m, toolEvents: m.toolEvents.map((ev) => ev.name === block.name && ev.type === "executing" ? { ...ev, type: "error" as const, error: errMsg } : ev) }));
 				}
 			}
-
 			conv.push({ role: "user", content: toolResults });
 		}
 	}
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault();
-			void send(input);
-		}
+		if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(input); }
 	};
 
-	const clearConversation = () => {
-		if (!isStreaming) {
-			setMessages([]);
-		}
+	const newChat = () => {
+		if (!isStreaming) { setMessages([]); setConversationId(uid()); }
+	};
+
+	const loadConversation = async (id: string) => {
+		try {
+			const res = await apiFetch(`${API_BASE}/conversations/load`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ id }),
+			});
+			if (res.ok) {
+				const data = await res.json() as { data?: { messages?: ChatMessage[] } };
+				const msgs = data.data?.messages ?? (data as unknown as { messages?: ChatMessage[] }).messages;
+				if (Array.isArray(msgs)) { setMessages(msgs); setConversationId(id); }
+			}
+		} catch { /* ignore */ }
+	};
+
+	const deleteConversation = async (id: string) => {
+		try {
+			await apiFetch(`${API_BASE}/conversations/delete`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ id }),
+			});
+			setConversations((prev) => prev.filter((c) => c.id !== id));
+			if (id === conversationId) newChat();
+		} catch { /* ignore */ }
 	};
 
 	return (
-		<div className="flex flex-col h-full max-h-[calc(100vh-8rem)]">
-			{/* Header */}
-			<div className="flex items-center justify-between pb-4 border-b">
-				<div className="flex items-center gap-3">
-					<div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-						<Sparkle className="h-5 w-5 text-white" weight="fill" />
+		<div className="flex h-full max-h-[calc(100vh-8rem)]">
+			{/* History sidebar */}
+			<HistorySidebar
+				conversations={conversations}
+				activeId={conversationId}
+				onSelect={(id) => void loadConversation(id)}
+				onDelete={(id) => void deleteConversation(id)}
+				onNew={newChat}
+				isOpen={historyOpen}
+				onToggle={() => setHistoryOpen(!historyOpen)}
+			/>
+
+			{/* Chat area */}
+			<div className="flex-1 flex flex-col min-w-0">
+				{/* Header */}
+				<div className="flex items-center justify-between px-6 py-3 border-b bg-background/80 backdrop-blur-sm">
+					<div className="flex items-center gap-3">
+						<div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+							<Sparkle className="h-4 w-4 text-white" weight="fill" />
+						</div>
+						<div>
+							<h1 className="text-base font-semibold">Token Press AI</h1>
+							<p className="text-[11px] text-muted-foreground">Build your website with AI</p>
+						</div>
 					</div>
-					<div>
-						<h1 className="text-xl font-semibold">Token Press AI</h1>
-						<p className="text-sm text-muted-foreground">Build your website with AI</p>
-					</div>
-				</div>
-				<div className="flex items-center gap-2">
-					<a
-						href="/"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
-					>
-						<Globe className="h-3.5 w-3.5" />
-						View website
-						<ArrowSquareOut className="h-3 w-3" />
-					</a>
-					{messages.length > 0 && (
-						<button
-							onClick={clearConversation}
-							disabled={isStreaming}
-							className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-							title="New conversation"
+					<div className="flex items-center gap-2">
+						<a
+							href="/"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
 						>
+							<Globe className="h-3.5 w-3.5" />
+							View website
+							<ArrowSquareOut className="h-3 w-3 opacity-70" />
+						</a>
+						<button onClick={newChat} disabled={isStreaming} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50">
 							<ArrowClockwise className="h-3.5 w-3.5" />
 							New chat
 						</button>
-					)}
+					</div>
 				</div>
-			</div>
 
-			{/* Messages */}
-			<div className="flex-1 overflow-y-auto py-6 space-y-5 min-h-0">
-				{messages.length === 0 && (
-					<div className="flex flex-col items-center justify-center h-full gap-8 text-center px-4">
-						<div className="space-y-3">
-							<div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-								<Sparkle className="h-7 w-7 text-white" weight="fill" />
-							</div>
-							<div>
+				{/* Messages */}
+				<div className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
+					{messages.length === 0 && (
+						<div className="flex flex-col items-center justify-center h-full gap-8 text-center">
+							<div className="space-y-3">
+								<div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+									<Sparkle className="h-7 w-7 text-white" weight="fill" />
+								</div>
 								<h2 className="text-2xl font-bold">Build your website</h2>
-								<p className="text-muted-foreground mt-1 max-w-md">
+								<p className="text-muted-foreground max-w-md">
 									Tell me what kind of website you want. I'll create the structure, write the content, build the menus, and publish everything — your site updates in real time.
 								</p>
 							</div>
+							<div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-2xl">
+								{QUICK_ACTIONS.map((action) => (
+									<button
+										key={action.label}
+										onClick={() => void send(action.prompt)}
+										disabled={isStreaming}
+										className="text-left px-4 py-3 rounded-xl border border-border/60 hover:bg-muted hover:border-blue-200 dark:hover:border-blue-800 transition-all text-sm disabled:opacity-50 group"
+									>
+										<span className="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{action.label}</span>
+									</button>
+								))}
+							</div>
 						</div>
-						<div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-2xl">
-							{QUICK_ACTIONS.map((action) => (
-								<button
-									key={action.label}
-									onClick={() => void send(action.prompt)}
-									disabled={isStreaming}
-									className="text-left px-4 py-3 rounded-xl border hover:bg-muted hover:border-blue-200 dark:hover:border-blue-800 transition-all text-sm disabled:opacity-50 group"
-								>
-									<span className="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-										{action.label}
-									</span>
-								</button>
-							))}
-						</div>
-					</div>
-				)}
-
-				{messages.map((msg, i) => (
-					<MessageBubble key={i} msg={msg} />
-				))}
-				<div ref={bottomRef} />
-			</div>
-
-			{/* Input */}
-			<div className="pt-4 border-t">
-				<div className="flex items-end gap-2 rounded-2xl border bg-background p-2 focus-within:ring-2 focus-within:ring-blue-500/30">
-					<textarea
-						ref={textareaRef}
-						value={input}
-						onChange={handleInputChange}
-						onKeyDown={handleKeyDown}
-						placeholder="Ask Token Press AI to manage your site..."
-						rows={1}
-						disabled={isStreaming}
-						className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50 max-h-40"
-					/>
-					{isStreaming ? (
-						<button
-							onClick={() => abortRef.current?.abort()}
-							className="flex-shrink-0 h-8 w-8 rounded-xl bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
-							title="Stop"
-						>
-							<span className="h-3 w-3 rounded-sm bg-white" />
-						</button>
-					) : (
-						<button
-							onClick={() => void send(input)}
-							disabled={!input.trim()}
-							className="flex-shrink-0 h-8 w-8 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-							title="Send"
-						>
-							<ArrowUp className="h-4 w-4" weight="bold" />
-						</button>
 					)}
+
+					{messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)}
+					<div ref={bottomRef} />
 				</div>
-				<p className="text-center text-xs text-muted-foreground mt-2">
-					Powered by Claude &middot; Token Press by Angkor AI
-				</p>
+
+				{/* Input */}
+				<div className="px-6 pb-4 pt-2 border-t bg-background/80 backdrop-blur-sm">
+					<div className="flex items-end gap-2 rounded-xl border border-border bg-card shadow-sm p-2 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-300 dark:focus-within:border-blue-700">
+						<textarea
+							ref={textareaRef}
+							value={input}
+							onChange={handleInputChange}
+							onKeyDown={handleKeyDown}
+							placeholder="Describe what you want to build..."
+							rows={1}
+							disabled={isStreaming}
+							className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50 max-h-40"
+						/>
+						{isStreaming ? (
+							<button onClick={() => abortRef.current?.abort()} className="flex-shrink-0 h-8 w-8 rounded-lg bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors" title="Stop">
+								<span className="h-3 w-3 rounded-sm bg-white" />
+							</button>
+						) : (
+							<button onClick={() => void send(input)} disabled={!input.trim()} className="flex-shrink-0 h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm" title="Send">
+								<ArrowUp className="h-4 w-4" weight="bold" />
+							</button>
+						)}
+					</div>
+					<p className="text-center text-[10px] text-muted-foreground/60 mt-2">
+						Powered by Claude &middot; Token Press by Angkor AI
+					</p>
+				</div>
 			</div>
 		</div>
 	);
@@ -1024,7 +741,4 @@ function ChatPage() {
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 export const widgets: PluginAdminExports["widgets"] = {};
-
-export const pages: PluginAdminExports["pages"] = {
-	"/chat": ChatPage,
-};
+export const pages: PluginAdminExports["pages"] = { "/chat": ChatPage };

@@ -475,16 +475,19 @@ export const CMS_TOOLS: AnthropicTool[] = [
 	},
 	{
 		name: "menu_add_item",
-		description: "Add an item to a navigation menu.",
+		description: "Add an item to a navigation menu. For custom links use type 'custom' with customUrl. For content references use type 'content' with referenceCollection and referenceId.",
 		input_schema: {
 			type: "object",
 			properties: {
 				menu: { type: "string", description: "Menu slug" },
+				type: { type: "string", description: "Item type: 'custom' for URL links, 'content' for content references", enum: ["custom", "content"] },
 				label: { type: "string", description: "Link label" },
-				url: { type: "string", description: "URL or path (e.g. '/', '/about')" },
+				customUrl: { type: "string", description: "URL or path for custom links (e.g. '/', '/about')" },
+				referenceCollection: { type: "string", description: "Collection slug for content links" },
+				referenceId: { type: "string", description: "Content item ID for content links" },
 				parentId: { type: "string", description: "Parent item ID for nesting (optional)" },
 			},
-			required: ["menu", "label", "url"],
+			required: ["menu", "type", "label"],
 		},
 	},
 	{
@@ -618,6 +621,20 @@ export const CMS_TOOLS: AnthropicTool[] = [
 				url: { type: "string", description: "Author website URL" },
 			},
 			required: ["slug", "displayName"],
+		},
+	},
+
+	// ── Web Browsing ──────────────────────────────────────────────────────────
+	{
+		name: "web_browse",
+		description:
+			"Fetch and read a web page. Use to understand a user's existing website, get inspiration from competitors, or verify that published content is live. Returns the page title, meta description, and text content.",
+		input_schema: {
+			type: "object",
+			properties: {
+				url: { type: "string", description: "Full URL to fetch (e.g. 'https://example.com')" },
+			},
+			required: ["url"],
 		},
 	},
 ];

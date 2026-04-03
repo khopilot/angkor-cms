@@ -7,7 +7,9 @@
  * runs entirely on the client side, where it has direct access to
  * CMS REST API endpoints with the user's session cookies.
  *
- * This avoids Cloudflare Workers' self-fetch restriction (error 1042).
+ * Also provides:
+ * - Conversation persistence via KV storage
+ * - Web browsing proxy (server-side fetch to avoid CORS)
  */
 
 import type { ResolvedPlugin } from "emdash";
@@ -31,6 +33,7 @@ CAPABILITIES:
 - Manage categories, tags, and taxonomies
 - Configure site settings (title, tagline)
 - Create URL redirects, moderate comments, manage bylines and revisions
+- Browse websites to understand existing sites, get inspiration, or verify content
 
 CRITICAL RULES:
 1. ALWAYS create content with status "published" — drafts are INVISIBLE on the website
@@ -40,14 +43,20 @@ CRITICAL RULES:
 5. When creating a collection, immediately add fields (minimum: title as string, body as portableText)
 6. Act immediately without asking for confirmation (except permanent deletions)
 7. Respond in the same language the user writes in
-8. After making changes, tell the user to refresh their website to see the changes
+8. After making changes, tell the user to refresh their website or click "View website" to see changes
 9. The 'data' parameter in content_create must be an object: {title: "...", body: "..."}
-10. For rich text fields (portableText), pass a plain string — it converts automatically`;
+10. For rich text fields (portableText), pass a plain string — it converts automatically
+11. When a user shares a URL, use web_browse to understand the site before building`;
+
+/** Narrow unknown to a record */
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 	return definePlugin({
 		id: "ai-interface",
-		version: "0.1.0",
+		version: "0.2.0",
 		capabilities: [],
 		allowedHosts: ["api.anthropic.com"],
 
@@ -58,9 +67,9 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 		},
 
 		routes: {
+			// ── Anthropic proxy ──────────────────────────────────────────
 			chat: {
 				handler: async (ctx) => {
-					// Resolve API key
 					let apiKey = options.anthropicApiKey;
 					if (!apiKey) {
 						try {
@@ -93,7 +102,6 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 					const model = options.model ?? "claude-sonnet-4-6";
 					const maxTokens = options.maxTokens ?? 4096;
 
-					// Proxy to Anthropic API with streaming
 					const anthropicResponse = await fetch(ANTHROPIC_API, {
 						method: "POST",
 						headers: {
@@ -115,14 +123,10 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 						const errText = await anthropicResponse.text().catch(() => "Unknown error");
 						return new Response(
 							JSON.stringify({ error: `Anthropic API ${anthropicResponse.status}: ${errText}` }),
-							{
-								status: 502,
-								headers: { "Content-Type": "application/json" },
-							},
+							{ status: 502, headers: { "Content-Type": "application/json" } },
 						);
 					}
 
-					// Stream Anthropic's SSE response directly to the browser
 					return new Response(anthropicResponse.body, {
 						headers: {
 							"Content-Type": "text/event-stream",
@@ -130,6 +134,113 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 							"X-Accel-Buffering": "no",
 						},
 					});
+				},
+			},
+
+			// ── Web browsing proxy ───────────────────────────────────────
+			browse: {
+				handler: async (ctx) => {
+					const input = isRecord(ctx.input) ? ctx.input : {};
+					const url = typeof input.url === "string" ? input.url : "";
+
+					if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+						return { error: "Invalid URL — must start with http:// or https://" };
+					}
+
+					try {
+						const response = await fetch(url, {
+							headers: { "User-Agent": "TokenPress-AI/1.0 (website builder bot)" },
+							redirect: "follow",
+						});
+
+						const html = await response.text();
+
+						// Extract title
+						const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+						const title = titleMatch?.[1]?.trim() ?? "";
+
+						// Extract meta description
+						const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["']/i);
+						const description = descMatch?.[1]?.trim() ?? "";
+
+						// Strip HTML to plain text
+						const text = html
+							.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+							.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+							.replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, "[NAV]")
+							.replace(/<header[^>]*>[\s\S]*?<\/header>/gi, "[HEADER]")
+							.replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, "[FOOTER]")
+							.replace(/<[^>]+>/g, " ")
+							.replace(/\s+/g, " ")
+							.trim()
+							.slice(0, 10000);
+
+						return { title, description, url, statusCode: response.status, content: text };
+					} catch (err) {
+						return { error: `Failed to fetch: ${err instanceof Error ? err.message : String(err)}` };
+					}
+				},
+			},
+
+			// ── Conversation persistence ─────────────────────────────────
+			conversations: {
+				handler: async (ctx) => {
+					const list = (await ctx.kv.get<Array<{ id: string; title: string; updatedAt: string }>>(
+						"conversations:index",
+					)) ?? [];
+					return list;
+				},
+			},
+
+			"conversations/save": {
+				handler: async (ctx) => {
+					const input = isRecord(ctx.input) ? ctx.input : {};
+					const id = typeof input.id === "string" ? input.id : "";
+					const title = typeof input.title === "string" ? input.title : "Untitled";
+					const messages = Array.isArray(input.messages) ? input.messages : [];
+
+					if (!id) return { error: "Missing conversation id" };
+
+					const now = new Date().toISOString();
+					await ctx.kv.set(`conversations:${id}`, { title, messages, updatedAt: now });
+
+					// Update index
+					const list = (await ctx.kv.get<Array<{ id: string; title: string; updatedAt: string }>>(
+						"conversations:index",
+					)) ?? [];
+					const existing = list.findIndex((c) => c.id === id);
+					const meta = { id, title, updatedAt: now };
+					if (existing >= 0) list[existing] = meta;
+					else list.unshift(meta);
+					await ctx.kv.set("conversations:index", list.slice(0, 50));
+
+					return { success: true };
+				},
+			},
+
+			"conversations/load": {
+				handler: async (ctx) => {
+					const input = isRecord(ctx.input) ? ctx.input : {};
+					const id = typeof input.id === "string" ? input.id : "";
+					if (!id) return { error: "Missing conversation id" };
+					return (await ctx.kv.get(`conversations:${id}`)) ?? { error: "Not found" };
+				},
+			},
+
+			"conversations/delete": {
+				handler: async (ctx) => {
+					const input = isRecord(ctx.input) ? ctx.input : {};
+					const id = typeof input.id === "string" ? input.id : "";
+					if (!id) return { error: "Missing conversation id" };
+					await ctx.kv.delete(`conversations:${id}`);
+					const list = (await ctx.kv.get<Array<{ id: string; title: string; updatedAt: string }>>(
+						"conversations:index",
+					)) ?? [];
+					await ctx.kv.set(
+						"conversations:index",
+						list.filter((c) => c.id !== id),
+					);
+					return { success: true };
 				},
 			},
 		},
