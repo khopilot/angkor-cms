@@ -400,9 +400,11 @@ function HistorySidebar({
 
 	if (!isOpen) {
 		return (
-			<button onClick={onToggle} className="absolute left-0 top-4 z-10 p-2 rounded-r-lg bg-muted hover:bg-muted/80 transition-colors" title="Show history">
-				<ChatCircle className="h-4 w-4" />
-			</button>
+			<div className="flex-shrink-0 border-r flex flex-col items-center py-3 px-1" style={{ backgroundColor: "#f3f4f6", borderColor: "#e5e7eb" }}>
+				<button onClick={onToggle} className="p-2 rounded-lg hover:bg-white transition-colors" title="Show history" style={{ color: "#374151" }}>
+					<ChatCircle className="h-5 w-5" />
+				</button>
+			</div>
 		);
 	}
 
