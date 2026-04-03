@@ -272,19 +272,32 @@ interface PageContext {
 	isEditing?: boolean;
 }
 
+/** Shared ref between usePageContext and ChatPage — avoids cross-component hacks */
+const _chatContainerRef: React.RefObject<HTMLDivElement | null> = React.createRef();
+
 function usePageContext(): PageContext | null {
 	const [ctx, setCtx] = React.useState<PageContext | null>(null);
-	const ref = React.useRef<HTMLDivElement>(null);
 
 	React.useEffect(() => {
-		const el = ref.current?.closest("[data-page-context]");
-		if (el) {
-			try { setCtx(JSON.parse(el.getAttribute("data-page-context")!) as PageContext); } catch { /* */ }
+		function readContext() {
+			const el = _chatContainerRef.current?.closest("[data-page-context]");
+			if (el) {
+				try {
+					const parsed = JSON.parse(el.getAttribute("data-page-context")!) as PageContext;
+					setCtx((prev) => prev?.type === parsed.type && prev?.collection === parsed.collection && prev?.contentId === parsed.contentId ? prev : parsed);
+				} catch { /* */ }
+			}
 		}
-	});
+		readContext();
 
-	// Expose ref for the component to attach
-	(usePageContext as { _ref?: React.RefObject<HTMLDivElement | null> })._ref = ref;
+		// Watch for attribute changes (page navigation updates the data attribute)
+		const el = _chatContainerRef.current?.closest("[data-page-context]");
+		if (!el) return;
+		const observer = new MutationObserver(readContext);
+		observer.observe(el, { attributes: true, attributeFilter: ["data-page-context"] });
+		return () => observer.disconnect();
+	}, []);
+
 	return ctx;
 }
 
@@ -619,7 +632,6 @@ function HistorySidebar({
 
 function ChatPage() {
 	const pageCtx = usePageContext();
-	const containerRef = (usePageContext as { _ref?: React.RefObject<HTMLDivElement | null> })._ref!;
 	const quickActions = React.useMemo(() => getQuickActions(pageCtx), [pageCtx]);
 	const placeholder = React.useMemo(() => getPlaceholder(pageCtx), [pageCtx]);
 	const emptyTitle = React.useMemo(() => getEmptyTitle(pageCtx), [pageCtx]);
@@ -811,7 +823,7 @@ function ChatPage() {
 	};
 
 	return (
-		<div ref={containerRef} className="flex h-full max-h-[calc(100vh-8rem)]">
+		<div ref={_chatContainerRef} className="flex h-full max-h-[calc(100vh-8rem)]">
 			{/* History sidebar */}
 			<HistorySidebar
 				conversations={conversations}
