@@ -84,7 +84,9 @@ CRITICAL RULES:
 7. Respond in user's language
 8. Menu items: type "custom", customUrl "/path"
 9. web_browse URLs the user shares before building
-10. When building a COMPLETE site, create ALL collections at once, then ALL content, then menu`;
+10. When building a COMPLETE site, create ALL collections at once, then ALL content, then menu
+11. Use image_generate to create professional images for the site (hero banners 16:9, team photos 1:1, product shots 4:3)
+12. Write detailed image prompts: describe subject, lighting, mood, composition, style`;
 
 /** Narrow unknown to a record */
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -256,6 +258,75 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 						return { title, description, url, statusCode: response.status, content: text };
 					} catch (err) {
 						return { error: `Failed to fetch: ${err instanceof Error ? err.message : String(err)}` };
+					}
+				},
+			},
+
+			// ── Image Generation (MiniMax image-01) ─────────────────────
+			"generate-image": {
+				handler: async (ctx) => {
+					// Get API key (same MiniMax key used for text)
+					let apiKey: string | undefined;
+					try {
+						const { env } = await import("cloudflare:workers");
+						apiKey = (env as Record<string, string>).ANTHROPIC_API_KEY;
+					} catch { /* */ }
+					apiKey = apiKey ?? options.anthropicApiKey;
+
+					if (!apiKey || !apiKey.startsWith("sk-api-")) {
+						return { error: "Image generation requires a MiniMax API key (sk-api-...)" };
+					}
+
+					const input = isRecord(ctx.input) ? ctx.input : {};
+					const prompt = typeof input.prompt === "string" ? input.prompt : "";
+					const aspectRatio = typeof input.aspect_ratio === "string" ? input.aspect_ratio : "16:9";
+
+					if (!prompt) return { error: "Missing prompt" };
+
+					try {
+						// Call MiniMax image-01 API
+						const response = await fetch("https://api.minimax.io/v1/image_generation", {
+							method: "POST",
+							headers: {
+								"Authorization": `Bearer ${apiKey}`,
+								"Content-Type": "application/json",
+							},
+							body: JSON.stringify({
+								model: "image-01",
+								prompt,
+								aspect_ratio: aspectRatio,
+								response_format: "url",
+								n: 1,
+							}),
+						});
+
+						if (!response.ok) {
+							const errText = await response.text();
+							return { error: `MiniMax image API ${response.status}: ${errText}` };
+						}
+
+						const data = (await response.json()) as {
+							data?: { image_urls?: Array<{ url: string }> };
+							base_resp?: { status_code: number; status_msg: string };
+						};
+
+						if (data.base_resp?.status_code !== 0) {
+							return { error: `Image generation failed: ${data.base_resp?.status_msg ?? "Unknown error"}` };
+						}
+
+						const imageUrl = data.data?.image_urls?.[0]?.url;
+						if (!imageUrl) return { error: "No image URL returned" };
+
+						// Return the URL — the client-side executor will upload it to CMS media
+						return {
+							success: true,
+							imageUrl,
+							prompt,
+							aspectRatio,
+							note: "Image URL expires in 24h. Use media upload to save permanently.",
+						};
+					} catch (err) {
+						return { error: `Image generation error: ${err instanceof Error ? err.message : String(err)}` };
 					}
 				},
 			},

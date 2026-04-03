@@ -747,6 +747,21 @@ export const CMS_TOOLS: AnthropicTool[] = [
 		},
 	},
 
+	// ── Image Generation (MiniMax image-01) ──────────────────────────────────
+	{
+		name: "image_generate",
+		description:
+			"Generate a professional image using AI (MiniMax image-01). Use for hero banners, team photos, product images, backgrounds, icons. The image is uploaded to the CMS media library and returns a media ID you can use in content_create (featured_image field). Write detailed prompts for best results.",
+		input_schema: {
+			type: "object",
+			properties: {
+				prompt: { type: "string", description: "Detailed image description. Be specific about: subject, lighting, mood, composition, style (e.g. 'Professional headshot of a smiling woman in a modern office, natural lighting, clean background, corporate style')" },
+				aspect_ratio: { type: "string", enum: ["16:9", "4:3", "3:2", "1:1", "3:4", "2:3", "9:16"], description: "Image aspect ratio. Use 16:9 for hero banners, 1:1 for avatars/team, 4:3 for cards (default: 16:9)" },
+			},
+			required: ["prompt"],
+		},
+	},
+
 	// ── Web Browsing ──────────────────────────────────────────────────────────
 	{
 		name: "web_browse",

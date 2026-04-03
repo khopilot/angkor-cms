@@ -119,6 +119,37 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 		case "widget_area_delete": { const { name } = toolInput; response = await del(`/_emdash/api/widget-areas/${name}`); break; }
 		case "widget_add": { const { area, type, title, content, menuName, componentId } = toolInput; response = await post(`/_emdash/api/widget-areas/${area}/widgets`, { type, title, content, menuName, componentId }); break; }
 		case "widget_delete": { const { area, widgetId } = toolInput; response = await del(`/_emdash/api/widget-areas/${area}/widgets/${widgetId}`); break; }
+		case "image_generate": {
+			// Step 1: Generate image via MiniMax
+			const genRes = await apiFetch(`${API_BASE}/generate-image`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ prompt: toolInput.prompt, aspect_ratio: toolInput.aspect_ratio }),
+			});
+			if (!genRes.ok) { response = genRes; break; }
+			const genData = await genRes.json() as { data?: { imageUrl?: string; success?: boolean }; imageUrl?: string; success?: boolean };
+			const imgUrl = genData.data?.imageUrl ?? genData.imageUrl;
+			if (!imgUrl) { return genData; }
+
+			// Step 2: Upload to CMS media library (fetch image → upload via media API)
+			try {
+				const imgRes = await fetch(imgUrl);
+				if (!imgRes.ok) return { error: "Failed to download generated image", imageUrl: imgUrl };
+				const blob = await imgRes.blob();
+				const filename = `ai-generated-${Date.now()}.png`;
+				const formData = new FormData();
+				formData.append("file", blob, filename);
+				const uploadRes = await apiFetch("/_emdash/api/media", { method: "POST", body: formData });
+				if (!uploadRes.ok) return { error: "Failed to upload to media library", imageUrl: imgUrl };
+				const uploadData = await uploadRes.json() as { data?: { item?: { id: string; url?: string } } };
+				const mediaId = uploadData.data?.item?.id;
+				const mediaUrl = uploadData.data?.item?.url;
+				return { success: true, mediaId, mediaUrl, imageUrl: imgUrl, prompt: toolInput.prompt };
+			} catch {
+				// If upload fails, still return the image URL
+				return { success: true, imageUrl: imgUrl, prompt: toolInput.prompt, note: "Image generated but upload to media library failed. URL expires in 24h." };
+			}
+		}
 		case "web_browse": { const { url } = toolInput; response = await apiFetch(`${API_BASE}/browse`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }); break; }
 		case "site_get_config": { response = await get("/_emdash/api/plugins/site-deployer/config"); break; }
 		case "site_set_config": { response = await post("/_emdash/api/plugins/site-deployer/config/save", toolInput); break; }
