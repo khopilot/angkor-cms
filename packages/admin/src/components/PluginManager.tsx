@@ -196,7 +196,7 @@ export function PluginManager({ manifest }: PluginManagerProps) {
 								to install plugins, or add them to your astro.config.mjs.
 							</>
 						) : (
-							"Add plugins to your astro.config.mjs to extend EmDash functionality."
+							"Add plugins to your astro.config.mjs to extend Token Press functionality."
 						)}
 					</p>
 				</div>

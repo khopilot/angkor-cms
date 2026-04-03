@@ -421,7 +421,7 @@ export function WordPressImport() {
 		const appId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 
 		const authUrl = new URL(`${wpUrl}/wp-admin/authorize-application.php`);
-		authUrl.searchParams.set("app_name", "EmDash CMS");
+		authUrl.searchParams.set("app_name", "Token Press");
 		authUrl.searchParams.set("app_id", appId);
 		authUrl.searchParams.set("success_url", callbackUrl);
 
@@ -720,7 +720,7 @@ export function WordPressImport() {
 				<div className="rounded-lg border bg-kumo-base p-12 text-center">
 					<Loader />
 					<p className="mt-4 text-kumo-subtle">Analyzing WordPress site...</p>
-					<p className="text-sm text-kumo-subtle">Fetching content from the EmDash Exporter API.</p>
+					<p className="text-sm text-kumo-subtle">Fetching content from the Token Press Exporter API.</p>
 				</div>
 			)}
 
@@ -1027,7 +1027,7 @@ function FeatureComparison() {
 					<Sparkle className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
 					<p className="text-blue-800 dark:text-blue-200">
 						For the best import experience, install the{" "}
-						<span className="font-medium">EmDash Exporter</span> plugin on your WordPress site.
+						<span className="font-medium">Token Press Exporter</span> plugin on your WordPress site.
 					</p>
 				</div>
 			</div>
@@ -1125,7 +1125,7 @@ function ProbeResultStep({
 						</h3>
 						<p className="mt-1 text-sm text-kumo-subtle">
 							{hasPlugin
-								? "EmDash Exporter plugin detected! You can import directly."
+								? "Token Press Exporter plugin detected! You can import directly."
 								: "This is a WordPress site."}
 						</p>
 					</div>
@@ -1182,7 +1182,7 @@ function ProbeResultStep({
 							</svg>
 						</div>
 						<div className="flex-1">
-							<h3 className="font-medium">Import via EmDash Exporter</h3>
+							<h3 className="font-medium">Import via Token Press Exporter</h3>
 							<p className="mt-1 text-sm text-kumo-subtle">
 								Import all content directly including drafts, custom post types, ACF fields, and SEO
 								data. No file download needed.
@@ -1343,7 +1343,7 @@ function PluginAuthStep({
 							<li>1. Log into your WordPress admin</li>
 							<li>2. Go to Users → Profile</li>
 							<li>3. Scroll to "Application Passwords"</li>
-							<li>4. Enter "EmDash" and click "Add New"</li>
+							<li>4. Enter "Token Press" and click "Add New"</li>
 							<li>5. Copy the generated password</li>
 						</ol>
 						<a
@@ -1935,7 +1935,7 @@ function MediaStep({
 							<p className="font-medium">What happens when you import:</p>
 							<ul className="mt-1 space-y-1 text-kumo-subtle">
 								<li>• Files are downloaded from your WordPress site</li>
-								<li>• Uploaded to your EmDash media storage</li>
+								<li>• Uploaded to your Token Press media storage</li>
 								<li>• URLs in your content are updated automatically</li>
 							</ul>
 						</div>
@@ -2242,7 +2242,7 @@ function AuthorMappingStep({
 					<div>
 						<h3 className="text-lg font-medium">Map Authors</h3>
 						<p className="text-kumo-subtle mt-1">
-							Assign WordPress authors to EmDash users. Posts will be attributed to the selected
+							Assign WordPress authors to Token Press users. Posts will be attributed to the selected
 							user.
 						</p>
 						{matchedCount > 0 && (
@@ -2301,7 +2301,7 @@ function AuthorMappingStep({
 					<div className="flex gap-3">
 						<Warning className="h-5 w-5 text-yellow-500 flex-shrink-0" />
 						<div>
-							<p className="font-medium">No EmDash users found</p>
+							<p className="font-medium">No Token Press users found</p>
 							<p className="text-sm text-kumo-subtle mt-1">
 								All imported content will be unassigned. You can reassign authors later from the
 								content editor.

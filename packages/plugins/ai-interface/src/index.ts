@@ -1,5 +1,5 @@
 /**
- * Angkor AI Interface Plugin
+ * Token Press AI Interface Plugin
  *
  * Provides a native AI chat interface in the CMS admin.
  * The server acts as a proxy for the Anthropic API key — streaming
@@ -19,7 +19,7 @@ import { CMS_TOOLS } from "./tools.js";
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 
-const SYSTEM_PROMPT = `You are Angkor AI, the native AI assistant built into this CMS.
+const SYSTEM_PROMPT = `You are Token Press AI, the native AI assistant built into this CMS (powered by Angkor AI).
 
 You manage this site directly using the tools available to you. You can:
 - Create, edit, publish, schedule, and delete content in any collection

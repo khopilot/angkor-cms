@@ -1,5 +1,5 @@
 /**
- * Angkor AI Interface — Admin Chat Panel
+ * Token Press AI Interface — Admin Chat Panel
  *
  * Full-page AI chat interface. The agentic loop runs entirely on the client:
  * 1. Send messages to /chat (proxy to Anthropic API)
@@ -914,7 +914,7 @@ function ChatPage() {
 						<Sparkle className="h-5 w-5 text-white" weight="fill" />
 					</div>
 					<div>
-						<h1 className="text-xl font-semibold">Angkor AI</h1>
+						<h1 className="text-xl font-semibold">Token Press AI</h1>
 						<p className="text-sm text-muted-foreground">Manage your entire site with AI</p>
 					</div>
 				</div>
@@ -977,7 +977,7 @@ function ChatPage() {
 						value={input}
 						onChange={handleInputChange}
 						onKeyDown={handleKeyDown}
-						placeholder="Ask Angkor AI to manage your site..."
+						placeholder="Ask Token Press AI to manage your site..."
 						rows={1}
 						disabled={isStreaming}
 						className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50 max-h-40"
@@ -1002,7 +1002,7 @@ function ChatPage() {
 					)}
 				</div>
 				<p className="text-center text-xs text-muted-foreground mt-2">
-					Powered by Claude &middot; Angkor AI CMS
+					Powered by Claude &middot; Token Press by Angkor AI
 				</p>
 			</div>
 		</div>

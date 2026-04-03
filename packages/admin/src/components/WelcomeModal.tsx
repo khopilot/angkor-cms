@@ -91,7 +91,7 @@ export function WelcomeModal({ open, onClose, userName, userRole }: WelcomeModal
 						<Sparkle className="h-8 w-8 text-kumo-brand" />
 					</div>
 					<Dialog.Title className="text-2xl font-semibold leading-none tracking-tight">
-						Welcome to EmDash{userName ? `, ${userName.split(" ")[0]}` : ""}!
+						Welcome to Token Press{userName ? `, ${userName.split(" ")[0]}` : ""}!
 					</Dialog.Title>
 					<Dialog.Description className="text-base text-kumo-subtle">
 						Your account has been created successfully.

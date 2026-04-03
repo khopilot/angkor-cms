@@ -4,11 +4,11 @@
 	"meta": {
 		"name": "Blog Starter",
 		"description": "A blog with posts and pages",
-		"author": "Angkor AI"
+		"author": "Token Press"
 	},
 
 	"settings": {
-		"title": "Angkor AI",
+		"title": "Token Press",
 		"tagline": "Insights on AI, technology and innovation"
 	},
 
@@ -100,7 +100,7 @@
 		{
 			"id": "byline-editorial",
 			"slug": "angkor-editorial",
-			"displayName": "Angkor AI Editorial"
+			"displayName": "Token Press Editorial"
 		},
 		{
 			"id": "byline-guest",
@@ -259,7 +259,7 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "Built with Astro and Angkor AI. Powering the next generation of AI-driven content."
+									"text": "Built with Astro and Token Press by Angkor AI. Powering the next generation of AI-driven content."
 								}
 							]
 						}

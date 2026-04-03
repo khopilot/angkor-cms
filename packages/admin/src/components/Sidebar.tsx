@@ -361,7 +361,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 							</g>
 							<circle cx="500" cy="500" r="52" fill="currentColor"/>
 						</svg>
-						<span className="emdash-brand-text font-semibold truncate">Angkor AI</span>
+						<span className="emdash-brand-text font-semibold truncate">Token Press</span>
 					</Link>
 				</KumoSidebar.Header>
 
@@ -434,7 +434,7 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 
 				<KumoSidebar.Footer>
 					<p className="emdash-nav-label px-3 py-2 text-[11px] text-white/30">
-						Angkor AI v{manifest.version || "0.0.0"}
+						Token Press v{manifest.version || "0.0.0"}
 					</p>
 				</KumoSidebar.Footer>
 			</KumoSidebar>

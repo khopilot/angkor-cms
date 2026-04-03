@@ -1,5 +1,5 @@
 /**
- * Angkor AI Interface Plugin Descriptor
+ * Token Press AI Interface Plugin Descriptor
  *
  * Adds a native AI chat panel to the CMS admin — manage your entire site
  * in natural language using Claude AI.

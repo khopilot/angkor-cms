@@ -1,7 +1,7 @@
 {
 	"name": "@angkor-cms/plugin-ai-interface",
 	"version": "0.1.0",
-	"description": "Native AI chat interface for Angkor AI CMS — manage your site in natural language",
+	"description": "Native AI chat interface for Token Press CMS by Angkor AI — manage your site in natural language",
 	"private": true,
 	"type": "module",
 	"main": "src/descriptor.ts",
