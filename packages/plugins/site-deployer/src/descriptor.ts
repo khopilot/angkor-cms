@@ -23,8 +23,11 @@ export function siteDeployerPlugin(
 ): PluginDescriptor<SiteDeployerOptions> {
 	return {
 		id: "site-deployer",
-		version: "0.1.0",
+		version: "0.2.0",
 		entrypoint: "@token-press/plugin-site-deployer/plugin",
 		options,
+		adminEntry: "@token-press/plugin-site-deployer/admin",
+		adminPages: [{ path: "/sites", label: "My Sites", icon: "globe" }],
+		adminWidgets: [],
 	};
 }
