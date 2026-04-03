@@ -1,0 +1,215 @@
+---
+interface Props {
+	plans: Array<{ data: Record<string, unknown>; id: string }>;
+	title?: string;
+}
+const { plans, title = "Pricing" } = Astro.props;
+---
+<section class="pricing-section">
+	<div class="pricing-inner">
+		<h2 class="pricing-title">{title}</h2>
+		<div class="pricing-grid" data-count={Math.min(plans.length, 4)}>
+			{plans.map((plan) => {
+				const name = String(plan.data.name || plan.data.title || "Plan");
+				const price = String(plan.data.price || "$0");
+				const featuresRaw = String(plan.data.features || "");
+				const features = featuresRaw.split("\n").filter((f) => f.trim());
+				const ctaText = String(plan.data.cta_text || plan.data.ctaText || "Get Started");
+				const ctaUrl = String(plan.data.cta_url || plan.data.ctaUrl || "#");
+				const featured = Boolean(plan.data.featured || plan.data.popular || plan.data.highlighted);
+				return (
+					<div class:list={["pricing-card", { "pricing-featured": featured }]}>
+						{featured && <span class="pricing-badge">Popular</span>}
+						<h3 class="pricing-plan-name">{name}</h3>
+						<div class="pricing-price">{price}</div>
+						{features.length > 0 && (
+							<ul class="pricing-features">
+								{features.map((f) => (
+									<li class="pricing-feature">
+										<span class="pricing-check" aria-hidden="true">{"\u2713"}</span>
+										<span>{f.trim()}</span>
+									</li>
+								))}
+							</ul>
+						)}
+						<a href={ctaUrl} class:list={["pricing-cta", { "pricing-cta-featured": featured }]}>
+							{ctaText}
+						</a>
+					</div>
+				);
+			})}
+		</div>
+	</div>
+</section>
+<style>
+	.pricing-section {
+		padding: 5rem 1.5rem;
+		background: #f8fafc;
+	}
+
+	.pricing-inner {
+		max-width: 72rem;
+		margin: 0 auto;
+	}
+
+	.pricing-title {
+		font-size: 2.25rem;
+		font-weight: 700;
+		color: #111827;
+		text-align: center;
+		margin: 0 0 3.5rem;
+		letter-spacing: -0.02em;
+	}
+
+	.pricing-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1.75rem;
+		align-items: start;
+	}
+
+	.pricing-grid[data-count="1"] {
+		grid-template-columns: 1fr;
+		max-width: 24rem;
+		margin: 0 auto;
+	}
+
+	.pricing-grid[data-count="2"] {
+		grid-template-columns: repeat(2, 1fr);
+		max-width: 48rem;
+		margin: 0 auto;
+	}
+
+	.pricing-card {
+		position: relative;
+		background: #fff;
+		border: 1px solid #f0f0f0;
+		border-radius: 1rem;
+		padding: 2.5rem 2rem 2rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		transition: all 0.3s ease;
+	}
+
+	.pricing-card:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 12px 36px rgba(0, 0, 0, 0.07);
+	}
+
+	.pricing-featured {
+		border: 2px solid #2563eb;
+		box-shadow: 0 8px 30px rgba(37, 99, 235, 0.1);
+	}
+
+	.pricing-featured:hover {
+		box-shadow: 0 16px 48px rgba(37, 99, 235, 0.15);
+	}
+
+	.pricing-badge {
+		position: absolute;
+		top: -0.75rem;
+		left: 50%;
+		transform: translateX(-50%);
+		background: #2563eb;
+		color: #fff;
+		font-size: 0.72rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		padding: 0.3rem 1rem;
+		border-radius: 1rem;
+		white-space: nowrap;
+	}
+
+	.pricing-plan-name {
+		font-size: 1.1rem;
+		font-weight: 600;
+		color: #6b7280;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		margin: 0 0 1rem;
+	}
+
+	.pricing-price {
+		font-size: 2.75rem;
+		font-weight: 800;
+		color: #111827;
+		letter-spacing: -0.03em;
+		line-height: 1;
+		margin-bottom: 1.75rem;
+	}
+
+	.pricing-features {
+		list-style: none;
+		padding: 0;
+		margin: 0 0 2rem;
+		width: 100%;
+		text-align: left;
+	}
+
+	.pricing-feature {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		padding: 0.5rem 0;
+		font-size: 0.92rem;
+		color: #374151;
+		border-bottom: 1px solid #f3f4f6;
+	}
+
+	.pricing-feature:last-child {
+		border-bottom: none;
+	}
+
+	.pricing-check {
+		color: #22c55e;
+		font-weight: 700;
+		font-size: 0.9rem;
+		flex-shrink: 0;
+	}
+
+	.pricing-cta {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		padding: 0.8rem 1.5rem;
+		border: 2px solid #2563eb;
+		border-radius: 0.5rem;
+		color: #2563eb;
+		font-weight: 600;
+		font-size: 0.95rem;
+		text-decoration: none;
+		transition: all 0.25s ease;
+		background: transparent;
+		margin-top: auto;
+	}
+
+	.pricing-cta:hover {
+		background: #eff6ff;
+		transform: translateY(-1px);
+	}
+
+	.pricing-cta-featured {
+		background: #2563eb;
+		color: #fff;
+		border-color: #2563eb;
+	}
+
+	.pricing-cta-featured:hover {
+		background: #1d4ed8;
+		border-color: #1d4ed8;
+	}
+
+	@media (max-width: 900px) {
+		.pricing-grid,
+		.pricing-grid[data-count="3"],
+		.pricing-grid[data-count="4"] {
+			grid-template-columns: 1fr;
+			max-width: 28rem;
+			margin: 0 auto;
+		}
+	}
+</style>

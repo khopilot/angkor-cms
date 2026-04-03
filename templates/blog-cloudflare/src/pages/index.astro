@@ -6,7 +6,7 @@
  * they automatically appear here with professional design components.
  * Falls back to a blog layout if no collections exist.
  */
-import { getEmDashCollection, getEmDashEntry, getEntryTerms } from "emdash";
+import { getEmDashCollection, getEmDashEntry, getEntryTerms, getSiteSettings } from "emdash";
 import { Image } from "emdash/ui";
 import Base from "../layouts/Base.astro";
 import HeroSection from "../components/sections/HeroSection.astro";
@@ -16,22 +16,15 @@ import TeamGrid from "../components/sections/TeamGrid.astro";
 import CaseStudiesGrid from "../components/sections/CaseStudiesGrid.astro";
 import CTASection from "../components/sections/CTASection.astro";
 import RecentPostsSection from "../components/sections/RecentPostsSection.astro";
+import FAQSection from "../components/sections/FAQSection.astro";
+import ContactSection from "../components/sections/ContactSection.astro";
 import PostCard from "../components/PostCard.astro";
 import { getReadingTime } from "../utils/reading-time";
 
-// ── Load site settings for hero ──
-let siteTitle = "Welcome";
-let siteTagline = "";
-try {
-	const settingsRes = await fetch(new URL("/_emdash/api/settings", Astro.url.origin), {
-		headers: { Cookie: Astro.request.headers.get("cookie") ?? "" },
-	});
-	if (settingsRes.ok) {
-		const settingsData = await settingsRes.json() as { data?: { title?: string; tagline?: string } };
-		siteTitle = settingsData.data?.title ?? siteTitle;
-		siteTagline = settingsData.data?.tagline ?? siteTagline;
-	}
-} catch { /* use defaults */ }
+// ── Load site settings directly from DB (no self-fetch) ──
+const settings = await getSiteSettings();
+const siteTitle = settings.title || "Welcome";
+const siteTagline = settings.tagline || "";
 
 // ── Load collections dynamically — each one renders a visual section ──
 type Entry = { data: Record<string, unknown>; id: string };
@@ -55,6 +48,7 @@ services = await loadCollection("services");
 team = await loadCollection("team");
 testimonials = await loadCollection("testimonials");
 caseStudies = await loadCollection("case_studies");
+const faqs = await loadCollection("faq");
 
 // Posts always exist
 const { entries: rawPosts, cacheHint } = await getEmDashCollection("posts");
@@ -116,7 +110,11 @@ function formatDate(date: unknown) {
 
 			{team.length > 0 && <TeamGrid members={team} />}
 
+			{faqs.length > 0 && <FAQSection faqs={faqs} />}
+
 			{sortedPosts.length > 0 && <RecentPostsSection posts={sortedPosts.slice(0, 3)} />}
+
+			<ContactSection />
 
 			<CTASection />
 		</>
