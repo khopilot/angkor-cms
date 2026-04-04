@@ -40,6 +40,7 @@ export const settingsUpdateBody = z
 		timezone: z.string().optional(),
 		social: socialSettings.optional(),
 		seo: seoSettings.optional(),
+		hero_image: z.string().optional(),
 	})
 	.meta({ id: "SettingsUpdateBody" });
 

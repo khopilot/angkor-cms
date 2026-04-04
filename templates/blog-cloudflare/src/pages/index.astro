@@ -35,19 +35,19 @@ const settings = await getSiteSettings();
 const siteTitle = settings.title || "Welcome";
 const siteTagline = settings.tagline || "";
 
-// Hero image — check if there's a media item tagged for hero use
+// Hero image — read from options table (key: site:hero_image)
 let heroImageUrl: string | undefined;
 try {
-	// Look for media with "hero" in filename or the most recent large image
-	const { entries: mediaItems } = await getEmDashCollection("media" as any).catch(() => ({ entries: [] }));
-} catch { /* no media */ }
-// Also check if settings has a hero_image or logo field
-const heroImage = (settings as Record<string, unknown>).hero_image;
-if (heroImage && typeof heroImage === "object" && (heroImage as Record<string, unknown>).src) {
-	heroImageUrl = String((heroImage as Record<string, unknown>).src);
-} else if (heroImage && typeof heroImage === "string") {
-	heroImageUrl = heroImage;
-}
+	const allSettings = settings as Record<string, unknown>;
+	const heroVal = allSettings.hero_image;
+	if (heroVal && typeof heroVal === "string") {
+		heroImageUrl = heroVal;
+	} else if (heroVal && typeof heroVal === "object") {
+		const obj = heroVal as Record<string, unknown>;
+		if (obj.src) heroImageUrl = String(obj.src);
+		else if (obj.mediaId) heroImageUrl = `/_emdash/api/media/file/${obj.mediaId}`;
+	}
+} catch { /* not set */ }
 
 // ── Load collections dynamically — each one renders a visual section ──
 type Entry = { data: Record<string, unknown>; id: string };
