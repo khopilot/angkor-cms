@@ -347,7 +347,6 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 								model: "image-01",
 								prompt,
 								aspect_ratio: aspectRatio,
-								response_format: "url",
 								n: 1,
 							}),
 						});
@@ -358,16 +357,17 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 						}
 
 						const data = (await response.json()) as {
-							data?: { image_urls?: Array<{ url: string }> };
+							data?: { image_urls?: Array<string | { url: string }> };
 							base_resp?: { status_code: number; status_msg: string };
 						};
 
-						if (data.base_resp?.status_code !== 0) {
-							return { error: `Image generation failed: ${data.base_resp?.status_msg ?? "Unknown error"}` };
+						if (data.base_resp && data.base_resp.status_code !== 0) {
+							return { error: `Image generation failed: ${data.base_resp.status_msg ?? "Unknown error"}` };
 						}
 
-						const imageUrl = data.data?.image_urls?.[0]?.url;
-						if (!imageUrl) return { error: "No image URL returned" };
+						const rawUrl = data.data?.image_urls?.[0];
+						const imageUrl = typeof rawUrl === "string" ? rawUrl : rawUrl?.url;
+						if (!imageUrl) return { error: "No image URL returned", raw: JSON.stringify(data).slice(0, 500) };
 
 						// Return the URL — the client-side executor will upload it to CMS media
 						return {
