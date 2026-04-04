@@ -67,7 +67,7 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 		case "content_list": { const { collection, status, limit, locale } = toolInput; const p = new URLSearchParams(); if (status) p.set("status", String(status)); if (limit) p.set("limit", String(limit)); if (locale) p.set("locale", String(locale)); const qs = p.toString(); response = await get(`/_emdash/api/content/${collection}${qs ? `?${qs}` : ""}`); break; }
 		case "content_get": { const { collection, id } = toolInput; response = await get(`/_emdash/api/content/${collection}/${id}`); break; }
 		case "content_create": { const { collection, data, slug, status, locale, translationOf } = toolInput; response = await post(`/_emdash/api/content/${collection}`, { data, slug, status, locale, translationOf }); break; }
-		case "content_update": { const { collection, id, data, slug } = toolInput; response = await patch(`/_emdash/api/content/${collection}/${id}`, { data, slug }); break; }
+		case "content_update": { const { collection, id, data, slug } = toolInput; response = await put(`/_emdash/api/content/${collection}/${id}`, { data, slug }); break; }
 		case "content_publish": { const { collection, id } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/publish`); break; }
 		case "content_unpublish": { const { collection, id } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/unpublish`); break; }
 		case "content_delete": { const { collection, id } = toolInput; response = await del(`/_emdash/api/content/${collection}/${id}`); break; }
