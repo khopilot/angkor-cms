@@ -44,7 +44,7 @@ export function Header() {
 			{/* Right side actions */}
 			<div className="flex items-center space-x-2">
 				{/* View site link */}
-				<LinkButton variant="ghost" size="sm" href="/" external>
+				<LinkButton variant="ghost" size="sm" href={typeof window !== "undefined" && window.location.hostname.includes("token-press.com") ? "https://demo.token-press.com" : "/"} external>
 					<ArrowSquareOut className="h-4 w-4 mr-1" />
 					View Site
 				</LinkButton>
