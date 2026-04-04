@@ -15,6 +15,29 @@ if (hostname === "admin.token-press.com") {
 	return Astro.redirect("/_emdash/admin");
 }
 
+// Check for AI-generated custom homepage (HTML stored in plugin KV → D1 options table)
+// Plugin KV key: "plugin:ai-interface:code:pages/homepage" → stored in options.name
+try {
+	const db = Astro.locals.emdash?.db;
+	if (db) {
+		const row = await db
+			.selectFrom("options" as any)
+			.select(["value"])
+			.where("name" as any, "=", "plugin:ai-interface:code:pages/homepage")
+			.executeTakeFirst() as { value?: string } | undefined;
+		if (row?.value) {
+			let html = row.value;
+			// Options stores JSON-encoded values
+			if (html.startsWith('"')) {
+				try { html = JSON.parse(html); } catch {}
+			}
+			if (html && html.includes("<!")) {
+				return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" } });
+			}
+		}
+	}
+} catch { /* no custom page — fall through to CMS template */ }
+
 import { getEmDashCollection, getEmDashEntry, getEntryTerms, getSiteSettings } from "emdash";
 import { Image } from "emdash/ui";
 import Base from "../layouts/Base.astro";
