@@ -170,8 +170,11 @@ function setBaselineSecurityHeaders(response: Response): void {
 		"camera=(), microphone=(), geolocation=(), payment=()",
 	);
 	// Prevent clickjacking (non-admin routes; admin CSP uses frame-ancestors)
+	// Allow framing from admin.token-press.com for the live preview
 	if (!response.headers.has("Content-Security-Policy")) {
-		response.headers.set("X-Frame-Options", "SAMEORIGIN");
+		response.headers.set("X-Frame-Options", "ALLOW-FROM https://admin.token-press.com");
+		// Modern browsers use CSP frame-ancestors instead of X-Frame-Options
+		response.headers.set("Content-Security-Policy", "frame-ancestors 'self' https://admin.token-press.com https://*.token-press.com");
 	}
 }
 
