@@ -369,13 +369,28 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 						const imageUrl = typeof rawUrl === "string" ? rawUrl : rawUrl?.url;
 						if (!imageUrl) return { error: "No image URL returned", raw: JSON.stringify(data).slice(0, 500) };
 
-						// Return the URL — the client-side executor will upload it to CMS media
+						// Download the image server-side (avoids CORS) and return as base64
+						// The client-side executor will then upload it to CMS media
+						let imageBase64: string | null = null;
+						try {
+							const imgResponse = await fetch(imageUrl);
+							if (imgResponse.ok) {
+								const buffer = await imgResponse.arrayBuffer();
+								const bytes = new Uint8Array(buffer);
+								let binary = "";
+								for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
+								imageBase64 = btoa(binary);
+							}
+						} catch {
+							// Download failed — still return the URL
+						}
+
 						return {
 							success: true,
 							imageUrl,
+							imageBase64,
 							prompt,
 							aspectRatio,
-							note: "Image URL expires in 24h. Use media upload to save permanently.",
 						};
 					} catch (err) {
 						return { error: `Image generation error: ${err instanceof Error ? err.message : String(err)}` };

@@ -221,35 +221,46 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 			}
 		}
 		case "image_generate": {
-			// Step 1: Generate image via MiniMax
+			// Step 1: Generate image via MiniMax (server downloads it as base64)
 			const genRes = await apiFetch(`${API_BASE}/generate-image`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ prompt: toolInput.prompt, aspect_ratio: toolInput.aspect_ratio }),
 			});
 			if (!genRes.ok) { response = genRes; break; }
-			const genData = await genRes.json() as { data?: { imageUrl?: string; success?: boolean }; imageUrl?: string; success?: boolean };
+			const genData = await genRes.json() as { data?: { imageBase64?: string; imageUrl?: string }; imageBase64?: string; imageUrl?: string };
+			const base64 = genData.data?.imageBase64 ?? genData.imageBase64;
 			const imgUrl = genData.data?.imageUrl ?? genData.imageUrl;
-			if (!imgUrl) { return genData; }
 
-			// Step 2: Upload to CMS media library (fetch image → upload via media API)
-			try {
-				const imgRes = await fetch(imgUrl);
-				if (!imgRes.ok) return { error: "Failed to download generated image", imageUrl: imgUrl };
-				const blob = await imgRes.blob();
-				const filename = `ai-generated-${Date.now()}.png`;
-				const formData = new FormData();
-				formData.append("file", blob, filename);
-				const uploadRes = await apiFetch("/_emdash/api/media", { method: "POST", body: formData });
-				if (!uploadRes.ok) return { error: "Failed to upload to media library", imageUrl: imgUrl };
-				const uploadData = await uploadRes.json() as { data?: { item?: { id: string; url?: string } } };
-				const mediaId = uploadData.data?.item?.id;
-				const mediaUrl = uploadData.data?.item?.url;
-				return { success: true, mediaId, mediaUrl, imageUrl: imgUrl, prompt: toolInput.prompt };
-			} catch {
-				// If upload fails, still return the image URL
-				return { success: true, imageUrl: imgUrl, prompt: toolInput.prompt, note: "Image generated but upload to media library failed. URL expires in 24h." };
+			if (!base64 && !imgUrl) return genData;
+
+			// Step 2: Upload to CMS media library using base64 data
+			if (base64) {
+				try {
+					const binaryStr = atob(base64);
+					const bytes = new Uint8Array(binaryStr.length);
+					for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+					const blob = new Blob([bytes], { type: "image/jpeg" });
+					const filename = `ai-generated-${Date.now()}.jpg`;
+					const formData = new FormData();
+					formData.append("file", blob, filename);
+					const uploadRes = await apiFetch("/_emdash/api/media", { method: "POST", body: formData });
+					if (uploadRes.ok) {
+						const uploadData = await uploadRes.json() as { data?: { item?: { id: string; url?: string } } };
+						return {
+							success: true,
+							mediaId: uploadData.data?.item?.id,
+							mediaUrl: uploadData.data?.item?.url,
+							imageUrl: imgUrl,
+							prompt: toolInput.prompt,
+							uploaded: true,
+						};
+					}
+				} catch { /* fallthrough */ }
 			}
+
+			// Fallback: return URL only
+			return { success: true, imageUrl: imgUrl, prompt: toolInput.prompt, uploaded: false, note: "Image generated but upload failed. URL expires in 24h." };
 		}
 		case "web_browse": { const { url } = toolInput; response = await apiFetch(`${API_BASE}/browse`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }); break; }
 		case "site_get_config": { response = await get("/_emdash/api/plugins/site-deployer/config"); break; }
