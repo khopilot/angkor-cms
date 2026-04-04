@@ -1110,9 +1110,7 @@ function ChatPage() {
 				{/* Header */}
 				<div className="flex items-center justify-between px-6 py-3 border-b" style={{ backgroundColor: "#ffffff", borderColor: "#e5e7eb" }}>
 					<div className="flex items-center gap-3">
-						<div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-							<Sparkle className="h-4 w-4 text-white" weight="fill" />
-						</div>
+						<img src="/tp-logo.png" alt="Token Press" style={{ width: 32, height: 32, borderRadius: 8 }} />
 						<div>
 							<h1 className="text-base font-semibold" style={{ color: "#111827" }}>Token Press AI</h1>
 							<p className="text-[11px]" style={{ color: "#6b7280" }}>Build your website with AI</p>
@@ -1156,9 +1154,7 @@ function ChatPage() {
 						return (
 							<div className="flex flex-col items-center justify-center h-full gap-8 text-center">
 								<div className="space-y-3">
-									<div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-										<Sparkle className="h-7 w-7 text-white" weight="fill" />
-									</div>
+									<img src="/tp-logo.png" alt="Token Press" style={{ width: 56, height: 56, borderRadius: 16, margin: "0 auto", display: "block" }} />
 									<h2 className="text-2xl font-bold" style={{ color: "#111827" }}>{title}</h2>
 									<p style={{ color: "#6b7280" }} className="max-w-lg">{subtitle}</p>
 								</div>
