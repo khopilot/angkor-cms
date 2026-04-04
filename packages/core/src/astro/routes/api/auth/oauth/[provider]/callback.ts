@@ -112,12 +112,16 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 	}
 
 	try {
-		// Get OAuth providers from environment
-		// eslint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- locals.runtime is injected by the Cloudflare adapter at runtime; not declared on App.Locals since the adapter is optional
-		const runtimeLocals = locals as unknown as { runtime?: { env?: Record<string, unknown> } };
-		// eslint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- import.meta.env is typed as ImportMetaEnv but we need Record<string, unknown> for getOAuthConfig
-		const env = runtimeLocals.runtime?.env ?? (import.meta.env as Record<string, unknown>);
-		const providers = getOAuthConfig(env);
+		// Get OAuth providers from environment (Astro v6: cloudflare:workers)
+		let cfEnv: Record<string, unknown> = {};
+		try {
+			const { env: workerEnv } = await import("cloudflare:workers");
+			cfEnv = workerEnv as Record<string, unknown>;
+		} catch {
+			// eslint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+			cfEnv = import.meta.env as Record<string, unknown>;
+		}
+		const providers = getOAuthConfig(cfEnv);
 
 		if (!providers[provider]) {
 			return redirect(

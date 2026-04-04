@@ -87,12 +87,17 @@ export const GET: APIRoute = async ({ params, request, locals, redirect }) => {
 		const url = new URL(request.url);
 
 		// Get OAuth providers from environment
-		// Access via locals.runtime for Cloudflare, or import.meta.env for Node
-		// eslint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- locals.runtime is injected by the Cloudflare adapter at runtime; not declared on App.Locals since the adapter is optional
-		const runtimeLocals = locals as unknown as { runtime?: { env?: Record<string, unknown> } };
-		// eslint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- import.meta.env is typed as ImportMetaEnv but we need Record<string, unknown> for getOAuthConfig
-		const env = runtimeLocals.runtime?.env ?? (import.meta.env as Record<string, unknown>);
-		const providers = getOAuthConfig(env);
+		// Astro v6: use cloudflare:workers env import, fallback to import.meta.env
+		let cfEnv: Record<string, unknown> = {};
+		try {
+			const { env: workerEnv } = await import("cloudflare:workers");
+			cfEnv = workerEnv as Record<string, unknown>;
+		} catch {
+			// Not in Cloudflare Workers — use import.meta.env
+			// eslint-disable-next-line typescript-eslint(no-unsafe-type-assertion)
+			cfEnv = import.meta.env as Record<string, unknown>;
+		}
+		const providers = getOAuthConfig(cfEnv);
 
 		if (!providers[provider]) {
 			return redirect(
@@ -111,9 +116,10 @@ export const GET: APIRoute = async ({ params, request, locals, redirect }) => {
 
 		return redirect(authUrl);
 	} catch (error) {
-		console.error("OAuth initiation error:", error);
+		const errMsg = error instanceof Error ? error.message : String(error);
+		console.error("OAuth initiation error:", errMsg, error);
 		return redirect(
-			`/_emdash/admin/login?error=oauth_error&message=${encodeURIComponent("Failed to start OAuth flow. Please try again.")}`,
+			`/_emdash/admin/login?error=oauth_error&message=${encodeURIComponent(`OAuth error: ${errMsg}`)}`,
 		);
 	}
 };
