@@ -1,0 +1,41 @@
+---
+/**
+ * Dynamic custom page renderer
+ *
+ * Serves pages written by the AI via code_write_file.
+ * Pages are stored in plugin KV as complete HTML.
+ * No rebuild needed — instant updates.
+ *
+ * URL: /_custom/landing → KV key "code:pages/landing"
+ */
+export const prerender = false;
+
+const { path } = Astro.params;
+const pagePath = path || "index";
+
+// Read from plugin KV via the API
+let html = "";
+try {
+	const res = await fetch(new URL(`/_emdash/api/plugins/ai-interface/code/read`, Astro.url.origin), {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-EmDash-Request": "1",
+			Cookie: Astro.request.headers.get("cookie") ?? "",
+		},
+		body: JSON.stringify({ path: `pages/${pagePath}` }),
+	});
+
+	if (res.ok) {
+		const data = await res.json() as { data?: { content?: string }; content?: string };
+		html = data.data?.content ?? (data as Record<string, unknown>).content as string ?? "";
+	}
+} catch {
+	// Self-fetch might fail in Workers — try KV directly via plugin route
+}
+
+if (!html) {
+	return Astro.redirect("/404");
+}
+---
+<Fragment set:html={html} />

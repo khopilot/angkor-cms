@@ -115,27 +115,39 @@ These auto-render on the homepage:
 "posts" → blog cards (exists)
 
 ═══ CODE GENERATION (most powerful capability) ═══
-You can WRITE ACTUAL CODE — Astro components, Tailwind CSS, page layouts.
-- code_list_files: see existing template files
-- code_read_file: read a component to understand it before modifying
-- code_write_file: write/overwrite Astro components with Tailwind CSS
+You can WRITE COMPLETE WEB PAGES that are INSTANTLY LIVE.
 
-When asked to change design/layout:
-1. code_read_file to see current component
-2. Modify with Tailwind v4 classes
-3. code_write_file to save
-4. Tell user to refresh preview
+HOW IT WORKS:
+1. Write a complete HTML page using code_write_file with path "pages/PAGE_NAME"
+2. The page is instantly accessible at: /_emdash/api/plugins/ai-interface/page?name=PAGE_NAME
+3. Use Tailwind CSS via CDN for styling (no build step needed)
+4. Pages update INSTANTLY when you rewrite them
 
-Example: "Make the hero bigger with a video background"
-→ code_read_file({ path: "src/components/sections/HeroSection.astro" })
-→ Modify the component with new Tailwind classes
-→ code_write_file({ path: "src/components/sections/HeroSection.astro", content: "..." })
+WRITE COMPLETE HTML — not Astro components. Include everything:
+- <!DOCTYPE html> with full <head> (meta, title, Tailwind CDN)
+- Tailwind CDN: <script src="https://cdn.tailwindcss.com"></script>
+- Complete responsive HTML body
+- Inline JavaScript if needed
+- Self-contained — no external dependencies except Tailwind CDN
 
-Write PRODUCTION QUALITY code:
-- Use Tailwind v4 utility classes (installed)
-- Write responsive designs (sm:, md:, lg: breakpoints)
-- Use CSS animations and transitions
-- Follow Astro component patterns (frontmatter + template + style)
+Example: "Create a landing page"
+→ code_write_file({
+    path: "pages/landing",
+    content: "<!DOCTYPE html><html>...<script src='https://cdn.tailwindcss.com'></script>...</html>"
+  })
+→ Page is live at: /_emdash/api/plugins/ai-interface/page?name=landing
+
+WRITE STUNNING CODE:
+- Use Tailwind CSS for everything (flex, grid, gradients, animations)
+- Responsive: mobile-first with sm:, md:, lg: breakpoints
+- Professional: gradients, shadows, transitions, hover effects
+- Dark mode support with dark: classes
+- Modern design patterns: glass morphism, gradient text, animated backgrounds
+
+Tools:
+- code_write_file: write a complete HTML page (path: "pages/NAME")
+- code_read_file: read existing code
+- code_list_files: list existing files
 
 ═══ OTHER CAPABILITIES ═══
 - image_generate: AI images (DETAILED prompts: subject, lighting, mood, style)
@@ -310,6 +322,25 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 					}
 
 					return { success: true, path, size: content.length, message: `File written: ${path}. Note: code changes require a rebuild to appear on the live site.` };
+				},
+			},
+
+			// Serve a custom page as raw HTML (no auth required)
+			"page": {
+				public: true,
+				handler: async (ctx) => {
+					const input = isRecord(ctx.input) ? ctx.input : {};
+					const pageName = typeof input.name === "string" ? input.name : "landing";
+					const content = await ctx.kv.get<string>(`code:pages/${pageName}`);
+					if (!content) {
+						return new Response("Page not found", { status: 404, headers: { "Content-Type": "text/html" } });
+					}
+					return new Response(content, {
+						headers: {
+							"Content-Type": "text/html; charset=utf-8",
+							"Cache-Control": "no-cache",
+						},
+					});
 				},
 			},
 
