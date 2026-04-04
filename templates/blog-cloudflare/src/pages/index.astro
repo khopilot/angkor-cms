@@ -6,10 +6,13 @@
  * they automatically appear here with professional design components.
  * Falls back to a blog layout if no collections exist.
  */
-// If this is the Token Press platform domain, show the landing page
+// Route by hostname
 const hostname = Astro.url.hostname;
 if (hostname === "token-press.com" || hostname === "www.token-press.com") {
 	return Astro.redirect("/token-press");
+}
+if (hostname === "admin.token-press.com") {
+	return Astro.redirect("/_emdash/admin");
 }
 
 import { getEmDashCollection, getEmDashEntry, getEntryTerms, getSiteSettings } from "emdash";
