@@ -19,6 +19,9 @@ import {
 	Trash,
 	Plus,
 	CaretLeft,
+	Image as ImageIcon,
+	File as FileIcon,
+	X,
 } from "@phosphor-icons/react";
 import type { PluginAdminExports } from "emdash";
 import { apiFetch } from "emdash/plugin-utils";
@@ -802,6 +805,8 @@ function ChatPage() {
 	const [showPreview, setShowPreview] = React.useState(false);
 	const [previewKey, setPreviewKey] = React.useState(0);
 	const iframeRef = React.useRef<HTMLIFrameElement>(null);
+	const [attachments, setAttachments] = React.useState<Array<{ name: string; type: string; base64: string; preview?: string }>>([]);
+	const fileInputRef = React.useRef<HTMLInputElement>(null);
 	const bottomRef = React.useRef<HTMLDivElement>(null);
 	const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 	const abortRef = React.useRef<AbortController | null>(null);
@@ -857,13 +862,86 @@ function ChatPage() {
 		});
 	};
 
+	// ── File handling ──
+	const handleFiles = async (files: FileList | File[]) => {
+		const newAttachments: typeof attachments = [];
+		for (const file of Array.from(files)) {
+			const base64 = await new Promise<string>((resolve) => {
+				const reader = new FileReader();
+				reader.onload = () => {
+					const result = reader.result as string;
+					resolve(result.split(",")[1] ?? "");
+				};
+				reader.readAsDataURL(file);
+			});
+			const isImage = file.type.startsWith("image/");
+			newAttachments.push({
+				name: file.name,
+				type: file.type,
+				base64,
+				preview: isImage ? `data:${file.type};base64,${base64}` : undefined,
+			});
+		}
+		setAttachments((prev) => [...prev, ...newAttachments]);
+	};
+
+	const handleDrop = (e: React.DragEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		const items = e.dataTransfer.items;
+		const files: File[] = [];
+		for (let i = 0; i < items.length; i++) {
+			const item = items[i]!;
+			if (item.kind === "file") {
+				const entry = item.webkitGetAsEntry?.();
+				if (entry?.isDirectory) {
+					// Read directory recursively
+					const dirReader = (entry as FileSystemDirectoryEntry).createReader();
+					dirReader.readEntries((entries) => {
+						const dirFiles: File[] = [];
+						let pending = entries.length;
+						if (pending === 0) return;
+						entries.forEach((e) => {
+							if (e.isFile) {
+								(e as FileSystemFileEntry).file((f) => {
+									dirFiles.push(f);
+									if (--pending === 0) void handleFiles(dirFiles);
+								});
+							} else {
+								if (--pending === 0 && dirFiles.length > 0) void handleFiles(dirFiles);
+							}
+						});
+					});
+				} else {
+					const f = item.getAsFile();
+					if (f) files.push(f);
+				}
+			}
+		}
+		if (files.length > 0) void handleFiles(files);
+	};
+
+	const removeAttachment = (index: number) => {
+		setAttachments((prev) => prev.filter((_, i) => i !== index));
+	};
+
 	const send = async (text: string) => {
 		const trimmed = text.trim();
-		if (!trimmed || isStreaming) return;
+		if ((!trimmed && attachments.length === 0) || isStreaming) return;
 		setInput("");
 		if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-		const userMsg: UserMessage = { role: "user", content: trimmed };
+		// Build user message content — text + any image attachments
+		const currentAttachments = [...attachments];
+		setAttachments([]);
+
+		let displayText = trimmed;
+		if (currentAttachments.length > 0) {
+			const fileNames = currentAttachments.map((a) => a.name).join(", ");
+			displayText = trimmed ? `${trimmed}\n📎 ${fileNames}` : `📎 ${fileNames}`;
+		}
+
+		const userMsg: UserMessage = { role: "user", content: displayText || "📎 Files attached" };
 		const assistantMsg: AssistantMessage = { role: "assistant", text: "", toolEvents: [], streaming: true };
 		const newMessages = [...messages, userMsg, assistantMsg];
 		setMessages(newMessages);
@@ -878,7 +956,37 @@ function ChatPage() {
 				if (m.role === "user") apiMessages.push({ role: "user", content: m.content });
 				else if (m.role === "assistant") apiMessages.push({ role: "assistant", content: m.text });
 			}
-			apiMessages.push({ role: "user", content: trimmed });
+			// Build the last user message with attachments (Anthropic vision format)
+			if (currentAttachments.length > 0) {
+				const contentParts: Array<unknown> = [];
+				// Add images as base64
+				for (const att of currentAttachments) {
+					if (att.type.startsWith("image/")) {
+						contentParts.push({
+							type: "image",
+							source: { type: "base64", media_type: att.type, data: att.base64 },
+						});
+					} else {
+						// Non-image files: send as text description
+						try {
+							const text = atob(att.base64);
+							contentParts.push({
+								type: "text",
+								text: `[File: ${att.name}]\n${text.slice(0, 10000)}`,
+							});
+						} catch {
+							contentParts.push({
+								type: "text",
+								text: `[File: ${att.name} — binary, cannot display]`,
+							});
+						}
+					}
+				}
+				if (trimmed) contentParts.push({ type: "text", text: trimmed });
+				apiMessages.push({ role: "user", content: contentParts });
+			} else {
+				apiMessages.push({ role: "user", content: trimmed || "..." });
+			}
 			await runAgenticLoop(apiMessages, abort.signal);
 		} catch (err) {
 			if ((err as { name?: string }).name !== "AbortError") {
@@ -1076,14 +1184,64 @@ function ChatPage() {
 				</div>
 
 				{/* Input */}
-				<div className="px-6 pb-4 pt-3 border-t" style={{ backgroundColor: "#ffffff", borderColor: "#e5e7eb" }}>
+				<div
+					className="px-6 pb-4 pt-3 border-t"
+					style={{ backgroundColor: "#ffffff", borderColor: "#e5e7eb" }}
+					onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+					onDrop={handleDrop}
+				>
+					{/* Attachment previews */}
+					{attachments.length > 0 && (
+						<div className="flex gap-2 mb-2 flex-wrap">
+							{attachments.map((att, i) => (
+								<div key={i} className="relative" style={{ border: "1px solid #e5e7eb", borderRadius: "0.5rem", overflow: "hidden" }}>
+									{att.preview ? (
+										<img src={att.preview} alt={att.name} style={{ width: 60, height: 60, objectFit: "cover" }} />
+									) : (
+										<div style={{ width: 60, height: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "#f3f4f6" }}>
+											<FileIcon size={20} style={{ color: "#6b7280" }} />
+										</div>
+									)}
+									<button
+										onClick={() => removeAttachment(i)}
+										style={{ position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", cursor: "pointer", fontSize: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}
+									>
+										<X size={10} />
+									</button>
+									<div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: "7px", padding: "1px 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+										{att.name}
+									</div>
+								</div>
+							))}
+						</div>
+					)}
+
 					<div className="flex items-end gap-2 rounded-xl border shadow-sm p-2 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400" style={{ backgroundColor: "#f9fafb", borderColor: "#d1d5db" }}>
+						{/* File upload button */}
+						<button
+							onClick={() => fileInputRef.current?.click()}
+							disabled={isStreaming}
+							className="flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-30"
+							style={{ color: "#6b7280" }}
+							title="Attach files or images (drag & drop also works)"
+						>
+							<ImageIcon className="h-4 w-4" />
+						</button>
+						<input
+							ref={fileInputRef}
+							type="file"
+							multiple
+							accept="image/*,.pdf,.txt,.csv,.json,.md,.html,.css,.js,.ts,.tsx,.jsx"
+							onChange={(e) => { if (e.target.files) void handleFiles(e.target.files); e.target.value = ""; }}
+							style={{ display: "none" }}
+						/>
+
 						<textarea
 							ref={textareaRef}
 							value={input}
 							onChange={handleInputChange}
 							onKeyDown={handleKeyDown}
-							placeholder={placeholder}
+							placeholder={attachments.length > 0 ? "Add a message about these files..." : placeholder}
 							rows={1}
 							disabled={isStreaming}
 							className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none disabled:opacity-50 max-h-40"
@@ -1094,7 +1252,7 @@ function ChatPage() {
 								<span className="h-3 w-3 rounded-sm bg-white" />
 							</button>
 						) : (
-							<button onClick={() => void send(input)} disabled={!input.trim()} className="flex-shrink-0 h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm" title="Send">
+							<button onClick={() => void send(input)} disabled={!input.trim() && attachments.length === 0} className="flex-shrink-0 h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm" title="Send">
 								<ArrowUp className="h-4 w-4" weight="bold" />
 							</button>
 						)}
