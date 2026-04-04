@@ -11,7 +11,7 @@ const { testimonials, title = "What Our Clients Say" } = Astro.props;
 		<div class="testimonials-grid">
 			{testimonials.map((t) => {
 				const quote = String(t.data.quote || t.data.content || t.data.text || t.data.body || "");
-				const name = String(t.data.name || t.data.author_name || t.data.author || "Anonymous");
+				const name = String(t.data.author_name || t.data.name || t.data.author || t.data.client_name || t.data.reviewer || "Client");
 				const role = String(t.data.role || t.data.author_role || t.data.position || "");
 				const company = t.data.company || t.data.author_company;
 				const roleDisplay = company ? `${role} at ${String(company)}` : role;

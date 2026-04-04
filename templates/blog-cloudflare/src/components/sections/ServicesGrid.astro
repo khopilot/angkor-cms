@@ -14,16 +14,16 @@ const { services, title = "Our Services", subtitle = "What we offer" } = Astro.p
 		</div>
 		<div class="services-grid">
 			{services.map((s) => {
-				const icon = String(s.data.icon || "").slice(0, 2) || "\u26A1";
-				const name = String(s.data.title || s.data.name || "Service");
-				const desc = String(s.data.description || s.data.excerpt || "");
+				const icon = String(s.data.icon || s.data.emoji || "").slice(0, 2) || "⚡";
+				const name = String(s.data.title || s.data.name || s.data.label || "Service");
+				const desc = String(s.data.description || s.data.excerpt || s.data.body || s.data.content || s.data.summary || "");
 				return (
 					<div class="service-card">
 						<div class="service-icon-wrap">
 							<span class="service-icon">{icon}</span>
 						</div>
 						<h3 class="service-name">{name}</h3>
-						<p class="service-desc">{desc}</p>
+						{desc && <p class="service-desc">{desc}</p>}
 					</div>
 				);
 			})}
