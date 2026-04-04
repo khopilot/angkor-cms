@@ -1,9 +1,7 @@
 ---
 /**
- * Token Press Landing Page
- *
- * This is the sales page for Token Press — the AI website builder.
- * Access it at /token-press
+ * Token Press Landing Page — token-press.com
+ * Short, attractive, converts visitors to users.
  */
 ---
 <!DOCTYPE html>
@@ -11,228 +9,254 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Token Press — Build Beautiful Websites with AI</title>
-	<meta name="description" content="Token Press is the AI-powered website builder. Describe your vision, AI builds your entire site — structure, content, design, images. Deploy instantly on Cloudflare's global network.">
-	<link rel="icon" type="image/svg+xml" href="/tp-logo.png">
+	<title>Token Press — Your Website, Built by AI</title>
+	<meta name="description" content="Tell AI what you want. Get a professional website in minutes. No coding, no design skills, no hosting headaches. Powered by Cloudflare.">
+	<meta property="og:title" content="Token Press — Your Website, Built by AI">
+	<meta property="og:description" content="Tell AI what you want. Get a professional website in minutes.">
+	<meta property="og:type" content="website">
+	<meta property="og:url" content="https://token-press.com">
+	<meta name="twitter:card" content="summary_large_image">
+	<link rel="icon" type="image/png" href="/tp-logo.png">
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 	<style>
-		*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-		body { font-family: 'Inter', system-ui, sans-serif; color: #111827; line-height: 1.6; -webkit-font-smoothing: antialiased; }
-		a { color: inherit; text-decoration: none; }
+		*{box-sizing:border-box;margin:0;padding:0}
+		body{font-family:'Inter',system-ui,sans-serif;color:#111;-webkit-font-smoothing:antialiased}
+		a{color:inherit;text-decoration:none}
+
+		/* Nav */
+		.nav{position:fixed;top:0;left:0;right:0;z-index:50;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;background:rgba(15,23,42,0.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.08)}
+		.nav-brand{display:flex;align-items:center;gap:0.625rem;font-weight:700;font-size:1.1rem;color:#fff}
+		.nav-brand img{width:28px;height:28px;border-radius:6px}
+		.nav-links{display:flex;align-items:center;gap:1.5rem}
+		.nav-links a{color:rgba(255,255,255,0.7);font-size:0.85rem;font-weight:500;transition:color 0.2s}
+		.nav-links a:hover{color:#fff}
+		.nav-cta{padding:0.5rem 1.25rem;background:#2563eb;color:#fff !important;border-radius:0.5rem;font-weight:600;font-size:0.85rem;transition:all 0.2s}
+		.nav-cta:hover{background:#1d4ed8;transform:translateY(-1px)}
 
 		/* Hero */
-		.tp-hero { position: relative; overflow: hidden; padding: 8rem 1.5rem 6rem; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #7c3aed 100%); color: #fff; text-align: center; }
-		.tp-hero::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.03) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255,255,255,0.05) 0%, transparent 50%); }
-		.tp-hero-inner { position: relative; max-width: 56rem; margin: 0 auto; }
-		.tp-badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.375rem 1rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; font-size: 0.8rem; font-weight: 500; color: #93c5fd; margin-bottom: 2rem; }
-		.tp-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
-		@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-		.tp-hero h1 { font-size: clamp(2.5rem, 7vw, 4.5rem); font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: 1.5rem; }
-		.tp-hero h1 span { background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-		.tp-hero p { font-size: 1.25rem; color: #cbd5e1; max-width: 38rem; margin: 0 auto 2.5rem; }
-		.tp-hero-cta { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-		.tp-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 1rem 2rem; font-weight: 600; font-size: 1rem; border-radius: 0.75rem; transition: all 0.2s; border: none; cursor: pointer; }
-		.tp-btn-primary { background: #fff; color: #0f172a; box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
-		.tp-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
-		.tp-btn-secondary { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.3); }
-		.tp-btn-secondary:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.5); }
+		.hero{position:relative;padding:10rem 2rem 6rem;background:linear-gradient(145deg,#0a0f1e 0%,#0f1d3d 35%,#1a1045 100%);color:#fff;text-align:center;overflow:hidden}
+		.hero::before{content:'';position:absolute;top:-20%;right:-10%;width:40rem;height:40rem;background:radial-gradient(circle,rgba(99,102,241,0.15),transparent 70%);pointer-events:none}
+		.hero::after{content:'';position:absolute;bottom:-20%;left:-10%;width:35rem;height:35rem;background:radial-gradient(circle,rgba(37,99,235,0.1),transparent 70%);pointer-events:none}
+		.hero-inner{position:relative;max-width:48rem;margin:0 auto}
+		.hero-tag{display:inline-flex;align-items:center;gap:0.5rem;padding:0.35rem 0.875rem;border:1px solid rgba(255,255,255,0.12);border-radius:999px;font-size:0.75rem;color:#93c5fd;margin-bottom:1.5rem;background:rgba(255,255,255,0.05)}
+		.hero-dot{width:6px;height:6px;border-radius:50%;background:#34d399;animation:blink 2s infinite}
+		@keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+		.hero h1{font-size:clamp(2.75rem,7vw,4.25rem);font-weight:900;letter-spacing:-0.04em;line-height:1.05;margin-bottom:1.25rem}
+		.hero h1 em{font-style:normal;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+		.hero p{font-size:1.15rem;color:#94a3b8;max-width:32rem;margin:0 auto 2rem;line-height:1.7}
+		.hero-btns{display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap}
+		.btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.875rem 1.75rem;font-weight:600;font-size:0.95rem;border-radius:0.625rem;transition:all 0.2s;border:none;cursor:pointer}
+		.btn-w{background:#fff;color:#0f172a;box-shadow:0 2px 12px rgba(0,0,0,0.15)}
+		.btn-w:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.2)}
+		.btn-g{background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.15)}
+		.btn-g:hover{background:rgba(255,255,255,0.14)}
+
+		/* Social proof */
+		.proof{padding:3rem 2rem;background:#f8fafc;text-align:center}
+		.proof p{font-size:0.8rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:1rem}
+		.proof-logos{display:flex;justify-content:center;gap:3rem;align-items:center;flex-wrap:wrap;opacity:0.5;font-size:1.1rem;font-weight:700;color:#6b7280}
+
+		/* How */
+		.how{padding:5rem 2rem;max-width:64rem;margin:0 auto}
+		.how-label{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#2563eb;margin-bottom:0.5rem;text-align:center}
+		.how h2{font-size:2rem;font-weight:800;text-align:center;margin-bottom:3rem;letter-spacing:-0.02em}
+		.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem}
+		.how-card{text-align:center;padding:2rem 1.5rem}
+		.how-num{width:3rem;height:3rem;border-radius:50%;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.15rem;margin:0 auto 1rem}
+		.how-card h3{font-size:1.05rem;font-weight:700;margin-bottom:0.5rem}
+		.how-card p{font-size:0.88rem;color:#6b7280;line-height:1.6}
 
 		/* Features */
-		.tp-features { padding: 6rem 1.5rem; background: #fff; }
-		.tp-features-inner { max-width: 72rem; margin: 0 auto; }
-		.tp-section-label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #2563eb; margin-bottom: 0.5rem; }
-		.tp-section-title { font-size: 2.5rem; font-weight: 800; color: #111827; margin-bottom: 1rem; letter-spacing: -0.02em; }
-		.tp-section-desc { font-size: 1.1rem; color: #6b7280; max-width: 36rem; margin-bottom: 3rem; }
-		.tp-features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-		.tp-feature { padding: 2rem; border-radius: 1rem; border: 1px solid #f3f4f6; transition: all 0.3s; }
-		.tp-feature:hover { border-color: #dbeafe; box-shadow: 0 10px 40px rgba(59,130,246,0.08); transform: translateY(-2px); }
-		.tp-feature-icon { width: 3rem; height: 3rem; border-radius: 0.75rem; background: #eff6ff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1rem; }
-		.tp-feature h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
-		.tp-feature p { font-size: 0.9rem; color: #6b7280; line-height: 1.6; }
-
-		/* How it works */
-		.tp-how { padding: 6rem 1.5rem; background: #f8fafc; }
-		.tp-how-inner { max-width: 56rem; margin: 0 auto; text-align: center; }
-		.tp-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3rem; margin-top: 3rem; text-align: left; }
-		.tp-step-num { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; margin-bottom: 1rem; }
-		.tp-step h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
-		.tp-step p { font-size: 0.9rem; color: #6b7280; }
+		.feat{padding:5rem 2rem;background:#f8fafc}
+		.feat-inner{max-width:64rem;margin:0 auto}
+		.feat h2{font-size:2rem;font-weight:800;text-align:center;margin-bottom:0.5rem;letter-spacing:-0.02em}
+		.feat>p{text-align:center;color:#6b7280;margin-bottom:3rem;font-size:1rem}
+		.feat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem}
+		.feat-item{display:flex;gap:1rem;padding:1.25rem 1.5rem;background:#fff;border-radius:0.75rem;border:1px solid #f0f0f0;transition:all 0.2s}
+		.feat-item:hover{border-color:#dbeafe;box-shadow:0 4px 16px rgba(59,130,246,0.06)}
+		.feat-icon{font-size:1.5rem;flex-shrink:0;margin-top:0.1rem}
+		.feat-item h3{font-size:0.95rem;font-weight:600;margin-bottom:0.25rem}
+		.feat-item p{font-size:0.82rem;color:#6b7280;line-height:1.5}
 
 		/* Pricing */
-		.tp-pricing { padding: 6rem 1.5rem; background: #fff; }
-		.tp-pricing-inner { max-width: 72rem; margin: 0 auto; text-align: center; }
-		.tp-pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 3rem; text-align: left; }
-		.tp-plan { padding: 2rem; border-radius: 1rem; border: 2px solid #e5e7eb; position: relative; }
-		.tp-plan-pop { border-color: #2563eb; box-shadow: 0 8px 30px rgba(37,99,235,0.12); }
-		.tp-plan-badge { position: absolute; top: -0.75rem; left: 50%; transform: translateX(-50%); background: #2563eb; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.25rem 1rem; border-radius: 999px; text-transform: uppercase; }
-		.tp-plan h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
-		.tp-plan-price { font-size: 3rem; font-weight: 900; margin-bottom: 1.5rem; }
-		.tp-plan-price span { font-size: 1rem; font-weight: 400; color: #9ca3af; }
-		.tp-plan ul { list-style: none; margin-bottom: 2rem; }
-		.tp-plan li { padding: 0.4rem 0; font-size: 0.85rem; color: #374151; }
-		.tp-plan li::before { content: '✓ '; color: #22c55e; font-weight: 700; }
-		.tp-plan-btn { display: block; width: 100%; padding: 0.75rem; text-align: center; border-radius: 0.5rem; font-weight: 600; font-size: 0.9rem; border: 2px solid #e5e7eb; color: #374151; transition: all 0.2s; background: #fff; cursor: pointer; }
-		.tp-plan-pop .tp-plan-btn { background: #2563eb; color: #fff; border-color: #2563eb; }
-		.tp-plan-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+		.price{padding:5rem 2rem}
+		.price-inner{max-width:56rem;margin:0 auto;text-align:center}
+		.price h2{font-size:2rem;font-weight:800;margin-bottom:0.5rem}
+		.price>p{color:#6b7280;margin-bottom:3rem}
+		.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;text-align:left}
+		.plan{padding:1.75rem;border-radius:1rem;border:2px solid #e5e7eb;position:relative}
+		.plan-pop{border-color:#2563eb;box-shadow:0 4px 24px rgba(37,99,235,0.1)}
+		.plan-badge{position:absolute;top:-0.65rem;left:50%;transform:translateX(-50%);background:#2563eb;color:#fff;font-size:0.65rem;font-weight:700;padding:0.2rem 0.75rem;border-radius:999px;text-transform:uppercase}
+		.plan h3{font-weight:700;margin-bottom:0.25rem}
+		.plan-price{font-size:2.5rem;font-weight:900;margin-bottom:1.25rem}
+		.plan-price span{font-size:0.9rem;font-weight:400;color:#9ca3af}
+		.plan ul{list-style:none;margin-bottom:1.5rem}
+		.plan li{padding:0.3rem 0;font-size:0.82rem;color:#374151}
+		.plan li::before{content:'✓ ';color:#22c55e;font-weight:700}
+		.plan-btn{display:block;width:100%;padding:0.7rem;text-align:center;border-radius:0.5rem;font-weight:600;font-size:0.85rem;border:2px solid #e5e7eb;color:#374151;transition:all 0.2s;background:#fff;cursor:pointer}
+		.plan-pop .plan-btn{background:#2563eb;color:#fff;border-color:#2563eb}
+		.plan-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
 
 		/* CTA */
-		.tp-cta { padding: 6rem 1.5rem; background: linear-gradient(135deg, #1d4ed8, #7c3aed); color: #fff; text-align: center; }
-		.tp-cta h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
-		.tp-cta p { font-size: 1.1rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem; }
+		.cta{padding:5rem 2rem;background:linear-gradient(135deg,#1e40af,#6d28d9);color:#fff;text-align:center}
+		.cta h2{font-size:2rem;font-weight:800;margin-bottom:0.75rem}
+		.cta p{color:rgba(255,255,255,0.75);margin-bottom:1.75rem;font-size:1rem}
 
 		/* Footer */
-		.tp-footer { padding: 3rem 1.5rem; background: #0f172a; color: #94a3b8; text-align: center; font-size: 0.85rem; }
-		.tp-footer a { color: #60a5fa; }
+		.foot{padding:2rem;background:#0f172a;color:#64748b;text-align:center;font-size:0.8rem}
+		.foot a{color:#60a5fa}
 
-		@media (max-width: 768px) {
-			.tp-features-grid, .tp-steps, .tp-pricing-grid { grid-template-columns: 1fr; }
-			.tp-hero { padding: 5rem 1.25rem 4rem; }
+		@media(max-width:768px){
+			.nav-links a:not(.nav-cta){display:none}
+			.how-grid,.feat-grid,.price-grid{grid-template-columns:1fr}
+			.hero{padding:8rem 1.25rem 4rem}
 		}
 	</style>
 </head>
 <body>
-	<!-- Hero -->
-	<section class="tp-hero">
-		<div class="tp-hero-inner">
-			<div class="tp-badge">
-				<span class="tp-badge-dot"></span>
-				AI-Powered Website Builder
+
+<!-- Nav -->
+<nav class="nav">
+	<a href="/" class="nav-brand">
+		<img src="/tp-logo.png" alt="Token Press">
+		Token Press
+	</a>
+	<div class="nav-links">
+		<a href="#how">How it works</a>
+		<a href="#features">Features</a>
+		<a href="#pricing">Pricing</a>
+		<a href="/_emdash/admin" class="nav-cta">Get Started</a>
+	</div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+	<div class="hero-inner">
+		<div class="hero-tag"><span class="hero-dot"></span> Now in Beta</div>
+		<h1>Your website,<br>built by <em>AI</em></h1>
+		<p>Describe what you need. Token Press creates your entire website — pages, content, images, navigation — and publishes it instantly.</p>
+		<div class="hero-btns">
+			<a href="/_emdash/admin" class="btn btn-w">Try Free →</a>
+			<a href="#how" class="btn btn-g">Watch it work</a>
+		</div>
+	</div>
+</section>
+
+<!-- How it works -->
+<section class="how" id="how">
+	<div class="how-label">How it works</div>
+	<h2>From idea to live website in 3 steps</h2>
+	<div class="how-grid">
+		<div class="how-card">
+			<div class="how-num">1</div>
+			<h3>Tell AI what you want</h3>
+			<p>"Build me a consulting website" or "I need a restaurant site in French" — just describe it.</p>
+		</div>
+		<div class="how-card">
+			<div class="how-num">2</div>
+			<h3>Watch it build</h3>
+			<p>AI creates your pages, writes content, generates images, and sets up navigation — live, in real-time.</p>
+		</div>
+		<div class="how-card">
+			<div class="how-num">3</div>
+			<h3>You're live</h3>
+			<p>Your site is published on a global CDN with SSL. Edit anytime with AI or the visual editor.</p>
+		</div>
+	</div>
+</section>
+
+<!-- Features -->
+<section class="feat" id="features">
+	<div class="feat-inner">
+		<h2>Everything included</h2>
+		<p>No plugins to install. No themes to configure. It just works.</p>
+		<div class="feat-grid">
+			<div class="feat-item">
+				<span class="feat-icon">🤖</span>
+				<div><h3>AI that builds</h3><p>Creates pages, writes content, generates images, builds menus — all from a conversation.</p></div>
 			</div>
-			<h1>Build Your Website<br>with <span>AI</span></h1>
-			<p>Describe your vision in plain language. Token Press AI creates your entire website — structure, content, design, images — and deploys it instantly.</p>
-			<div class="tp-hero-cta">
-				<a href="/_emdash/admin" class="tp-btn tp-btn-primary">Start Building Free →</a>
-				<a href="#how" class="tp-btn tp-btn-secondary">See How It Works</a>
+			<div class="feat-item">
+				<span class="feat-icon">📝</span>
+				<div><h3>Full CMS</h3><p>Manage your content like WordPress — posts, pages, media, users, comments, SEO.</p></div>
+			</div>
+			<div class="feat-item">
+				<span class="feat-icon">🖼️</span>
+				<div><h3>AI images</h3><p>No stock photos. AI generates unique images for your hero banners and team photos.</p></div>
+			</div>
+			<div class="feat-item">
+				<span class="feat-icon">⚡</span>
+				<div><h3>Instant deploy</h3><p>Deployed on Cloudflare — 330+ cities, SSL, CDN. Zero cold starts.</p></div>
+			</div>
+			<div class="feat-item">
+				<span class="feat-icon">🌐</span>
+				<div><h3>Custom domain</h3><p>Connect your domain with one click. SSL certificate included.</p></div>
+			</div>
+			<div class="feat-item">
+				<span class="feat-icon">🔌</span>
+				<div><h3>Extensible</h3><p>Plugin system for forms, analytics, e-commerce. Open source.</p></div>
 			</div>
 		</div>
-	</section>
+	</div>
+</section>
 
-	<!-- Features -->
-	<section class="tp-features">
-		<div class="tp-features-inner">
-			<div class="tp-section-label">Features</div>
-			<h2 class="tp-section-title">Everything you need to build</h2>
-			<p class="tp-section-desc">From your first idea to a live website — Token Press handles the entire journey.</p>
-			<div class="tp-features-grid">
-				<div class="tp-feature">
-					<div class="tp-feature-icon">🤖</div>
-					<h3>AI Website Builder</h3>
-					<p>Describe what you want. AI creates collections, writes content, builds navigation, generates images — and publishes everything.</p>
-				</div>
-				<div class="tp-feature">
-					<div class="tp-feature-icon">🎨</div>
-					<h3>Professional Design</h3>
-					<p>Pre-designed visual components — hero sections, service grids, testimonials, team cards, CTAs — all responsive and beautiful.</p>
-				</div>
-				<div class="tp-feature">
-					<div class="tp-feature-icon">📝</div>
-					<h3>Full CMS</h3>
-					<p>WordPress-level content management. Posts, pages, media library, comments, SEO, menus, taxonomies — all built in.</p>
-				</div>
-				<div class="tp-feature">
-					<div class="tp-feature-icon">🖼️</div>
-					<h3>AI Image Generation</h3>
-					<p>No stock photos needed. AI generates professional images for your hero banners, team photos, and product shots.</p>
-				</div>
-				<div class="tp-feature">
-					<div class="tp-feature-icon">⚡</div>
-					<h3>Edge Deployment</h3>
-					<p>Deployed on Cloudflare's global network — 330+ cities, zero cold starts, automatic SSL, CDN included.</p>
-				</div>
-				<div class="tp-feature">
-					<div class="tp-feature-icon">🔌</div>
-					<h3>Plugin Ecosystem</h3>
-					<p>Extend with plugins — forms, analytics, e-commerce, SEO tools. Open source and community-driven.</p>
-				</div>
+<!-- Pricing -->
+<section class="price" id="pricing">
+	<div class="price-inner">
+		<h2>Simple pricing</h2>
+		<p>Start free. Upgrade when you need more.</p>
+		<div class="price-grid">
+			<div class="plan">
+				<h3>Free</h3>
+				<div class="plan-price">$0<span>/mo</span></div>
+				<ul>
+					<li>1 website</li>
+					<li>50 AI requests/mo</li>
+					<li>100MB storage</li>
+					<li>Community support</li>
+				</ul>
+				<a href="/_emdash/admin" class="plan-btn">Start Free</a>
+			</div>
+			<div class="plan plan-pop">
+				<div class="plan-badge">Popular</div>
+				<h3>Pro</h3>
+				<div class="plan-price">$19<span>/mo</span></div>
+				<ul>
+					<li>3 websites</li>
+					<li>500 AI requests/mo</li>
+					<li>5GB storage</li>
+					<li>Custom domain</li>
+					<li>Priority support</li>
+				</ul>
+				<a href="/_emdash/admin" class="plan-btn">Start Pro</a>
+			</div>
+			<div class="plan">
+				<h3>Business</h3>
+				<div class="plan-price">$49<span>/mo</span></div>
+				<ul>
+					<li>10 websites</li>
+					<li>Unlimited AI</li>
+					<li>50GB storage</li>
+					<li>White-label</li>
+					<li>Dedicated support</li>
+				</ul>
+				<a href="/_emdash/admin" class="plan-btn">Start Business</a>
 			</div>
 		</div>
-	</section>
+	</div>
+</section>
 
-	<!-- How it works -->
-	<section class="tp-how" id="how">
-		<div class="tp-how-inner">
-			<div class="tp-section-label">How it works</div>
-			<h2 class="tp-section-title">3 steps to your website</h2>
-			<div class="tp-steps">
-				<div class="tp-step">
-					<div class="tp-step-num">1</div>
-					<h3>Describe your vision</h3>
-					<p>Tell the AI what kind of website you want. "Build me a consulting agency website" or "I need a restaurant site in French."</p>
-				</div>
-				<div class="tp-step">
-					<div class="tp-step-num">2</div>
-					<h3>AI builds everything</h3>
-					<p>Watch in real-time as AI creates your site structure, writes content, generates images, builds navigation — all in minutes.</p>
-				</div>
-				<div class="tp-step">
-					<div class="tp-step-num">3</div>
-					<h3>Your site is live</h3>
-					<p>Click "View website" — your professional site is live on Cloudflare's global network with custom domain and SSL.</p>
-				</div>
-			</div>
-		</div>
-	</section>
+<!-- CTA -->
+<section class="cta">
+	<h2>Ready to build?</h2>
+	<p>No credit card required. Your site in minutes.</p>
+	<a href="/_emdash/admin" class="btn btn-w">Start Building Free →</a>
+</section>
 
-	<!-- Pricing -->
-	<section class="tp-pricing">
-		<div class="tp-pricing-inner">
-			<div class="tp-section-label">Pricing</div>
-			<h2 class="tp-section-title">Simple, transparent pricing</h2>
-			<div class="tp-pricing-grid">
-				<div class="tp-plan">
-					<h3>Free</h3>
-					<div class="tp-plan-price">$0<span>/month</span></div>
-					<ul>
-						<li>1 website</li>
-						<li>5 content collections</li>
-						<li>100 content items</li>
-						<li>50 AI requests/month</li>
-						<li>100MB media storage</li>
-					</ul>
-					<a href="/_emdash/admin" class="tp-plan-btn">Get Started</a>
-				</div>
-				<div class="tp-plan tp-plan-pop">
-					<div class="tp-plan-badge">Popular</div>
-					<h3>Pro</h3>
-					<div class="tp-plan-price">$19<span>/month</span></div>
-					<ul>
-						<li>3 websites</li>
-						<li>Unlimited collections</li>
-						<li>Unlimited content</li>
-						<li>500 AI requests/month</li>
-						<li>5GB media storage</li>
-						<li>Custom domain</li>
-					</ul>
-					<a href="/_emdash/admin" class="tp-plan-btn">Start Pro</a>
-				</div>
-				<div class="tp-plan">
-					<h3>Business</h3>
-					<div class="tp-plan-price">$49<span>/month</span></div>
-					<ul>
-						<li>10 websites</li>
-						<li>Unlimited everything</li>
-						<li>Unlimited AI requests</li>
-						<li>50GB media storage</li>
-						<li>Priority support</li>
-						<li>White-label</li>
-					</ul>
-					<a href="/_emdash/admin" class="tp-plan-btn">Start Business</a>
-				</div>
-			</div>
-		</div>
-	</section>
+<!-- Footer -->
+<footer class="foot">
+	<p>Token Press by <a href="https://angkorai.com">Angkor AI</a> &middot; Open source &middot; Deployed on Cloudflare</p>
+</footer>
 
-	<!-- CTA -->
-	<section class="tp-cta">
-		<h2>Ready to build your website?</h2>
-		<p>Join thousands of businesses building with AI. No credit card required.</p>
-		<a href="/_emdash/admin" class="tp-btn tp-btn-primary">Start Building Free →</a>
-	</section>
-
-	<!-- Footer -->
-	<footer class="tp-footer">
-		<p>Token Press by <a href="https://angkorai.com">Angkor AI</a> — The AI-powered website builder</p>
-	</footer>
 </body>
 </html>
