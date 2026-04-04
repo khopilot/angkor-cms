@@ -13,17 +13,19 @@
 		"seed": "emdash seed"
 	},
 	"dependencies": {
+		"@angkor-cms/plugin-ai-interface": "workspace:*",
 		"@astrojs/cloudflare": "catalog:",
 		"@astrojs/react": "catalog:",
 		"@emdash-cms/cloudflare": "workspace:*",
-		"@angkor-cms/plugin-ai-interface": "workspace:*",
-		"@token-press/plugin-site-deployer": "workspace:*",
 		"@emdash-cms/plugin-forms": "workspace:*",
 		"@emdash-cms/plugin-webhook-notifier": "workspace:*",
+		"@tailwindcss/vite": "^4.2.2",
+		"@token-press/plugin-site-deployer": "workspace:*",
 		"astro": "catalog:",
 		"emdash": "workspace:*",
 		"react": "catalog:",
-		"react-dom": "catalog:"
+		"react-dom": "catalog:",
+		"tailwindcss": "^4.2.2"
 	},
 	"devDependencies": {
 		"@astrojs/check": "catalog:",

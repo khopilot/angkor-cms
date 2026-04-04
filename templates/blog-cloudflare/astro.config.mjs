@@ -8,23 +8,32 @@ import { siteDeployerPlugin } from "@token-press/plugin-site-deployer";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
 
+import tailwindcss from "@tailwindcss/vite";
+
 export default defineConfig({
-	output: "server",
-	adapter: cloudflare(),
-	image: {
-		layout: "constrained",
-		responsiveStyles: true,
+  output: "server",
+  adapter: cloudflare(),
+
+  image: {
+      layout: "constrained",
+      responsiveStyles: true,
 	},
-	integrations: [
-		react(),
-		emdash({
-			database: d1({ binding: "DB", session: "auto" }),
-			storage: r2({ binding: "MEDIA" }),
-			plugins: [formsPlugin(), aiInterfacePlugin(), siteDeployerPlugin()],
-			sandboxed: [webhookNotifierPlugin()],
-			sandboxRunner: sandbox(),
-			marketplace: "https://marketplace.emdashcms.com",
-		}),
+
+  integrations: [
+      react(),
+      emdash({
+          database: d1({ binding: "DB", session: "auto" }),
+          storage: r2({ binding: "MEDIA" }),
+          plugins: [formsPlugin(), aiInterfacePlugin(), siteDeployerPlugin()],
+          sandboxed: [webhookNotifierPlugin()],
+          sandboxRunner: sandbox(),
+          marketplace: "https://marketplace.emdashcms.com",
+      }),
 	],
-	devToolbar: { enabled: false },
+
+  devToolbar: { enabled: false },
+
+  vite: {
+    plugins: [tailwindcss()],
+  },
 });
