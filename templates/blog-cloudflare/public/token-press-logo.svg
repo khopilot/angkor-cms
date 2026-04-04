@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <!-- Outer ring -->
+  <circle cx="200" cy="200" r="190" fill="none" stroke="#5B93D4" stroke-width="12"/>
+  <!-- Inner filled circle -->
+  <circle cx="200" cy="200" r="160" fill="#5B93D4"/>
+  <!-- T - vertical bar (cut out) -->
+  <rect x="120" y="80" width="40" height="240" fill="#000"/>
+  <!-- T - horizontal bar (cut out) -->
+  <rect x="80" y="80" width="140" height="40" fill="#000"/>
+  <!-- P - vertical bar (cut out) -->
+  <rect x="200" y="80" width="40" height="240" fill="#000"/>
+  <!-- P - bowl top (cut out) -->
+  <rect x="200" y="80" width="80" height="40" fill="#000"/>
+  <!-- P - bowl right (cut out) -->
+  <rect x="280" y="80" width="40" height="100" fill="#000"/>
+  <!-- P - bowl bottom (cut out) -->
+  <rect x="200" y="140" width="80" height="40" fill="#000"/>
+  <!-- P - bowl interior (restore blue) -->
+  <rect x="240" y="120" width="40" height="20" rx="4" fill="#5B93D4"/>
+</svg>
