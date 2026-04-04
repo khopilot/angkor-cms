@@ -138,6 +138,7 @@ async function exchangeCode(
 		headers: {
 			"Content-Type": "application/x-www-form-urlencoded",
 			Accept: "application/json",
+			"User-Agent": "TokenPress/1.0",
 		},
 		body,
 	});
@@ -177,6 +178,7 @@ async function fetchProfile(
 		headers: {
 			Authorization: `Bearer ${accessToken}`,
 			Accept: "application/json",
+			"User-Agent": "TokenPress/1.0",
 		},
 	});
 

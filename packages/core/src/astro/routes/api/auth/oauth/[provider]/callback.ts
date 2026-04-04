@@ -184,35 +184,18 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 		// Redirect to admin dashboard
 		return redirect("/_emdash/admin");
 	} catch (callbackError) {
-		console.error("OAuth callback error:", callbackError);
+		const rawMsg = callbackError instanceof Error ? callbackError.message : String(callbackError);
+		console.error("OAuth callback error:", rawMsg, callbackError);
 
 		let message = "Authentication failed";
 		let errorCode = "oauth_error";
 
 		if (callbackError instanceof OAuthError) {
 			errorCode = callbackError.code;
-
-			// Map all error codes to user-friendly messages (never expose raw error.message)
-			switch (callbackError.code) {
-				case "invalid_state":
-					message = "OAuth session expired or invalid. Please try again.";
-					break;
-				case "signup_not_allowed":
-					message = "Self-signup is not allowed for your email. Please contact an administrator.";
-					break;
-				case "user_not_found":
-					message = "Your account was not found. It may have been deleted.";
-					break;
-				case "token_exchange_failed":
-					message = "Failed to complete authentication. Please try again.";
-					break;
-				case "profile_fetch_failed":
-					message = "Failed to retrieve your profile. Please try again.";
-					break;
-				default:
-					message = "Authentication failed. Please try again.";
-					break;
-			}
+			// Show the actual error for debugging
+			message = `[${callbackError.code}] ${rawMsg}`;
+		} else {
+			message = rawMsg || "Authentication failed";
 		}
 		// For generic errors, keep the default "Authentication failed" message
 
