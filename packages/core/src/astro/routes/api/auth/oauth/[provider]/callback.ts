@@ -133,13 +133,12 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 			baseUrl: `${url.origin}/_emdash`,
 			providers,
 			canSelfSignup: async (email: string) => {
-				// Extract domain from email
 				const domain = email.split("@")[1]?.toLowerCase();
 				if (!domain) {
 					return null;
 				}
 
-				// Check allowed_domains table for a matching, enabled entry
+				// Check allowed_domains table first
 				const entry = await emdash.db
 					.selectFrom("allowed_domains")
 					.selectAll()
@@ -147,12 +146,19 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 					.where("enabled", "=", 1)
 					.executeTakeFirst();
 
-				if (!entry) {
+				// If no allowed_domains are configured at all, allow everyone (open signup)
+				const totalDomains = await emdash.db
+					.selectFrom("allowed_domains")
+					.select(emdash.db.fn.countAll().as("count"))
+					.executeTakeFirst();
+				const hasAnyDomains = Number(totalDomains?.count ?? 0) > 0;
+
+				if (!entry && hasAnyDomains) {
+					// Domains are configured but this one isn't allowed
 					return null;
 				}
 
-				// Map the stored role level to the Role enum
-				const roleLevel = entry.default_role;
+				// Map role level or default to EDITOR for open signup
 				const roleMap: Record<number, RoleLevel> = {
 					50: Role.ADMIN,
 					40: Role.EDITOR,
@@ -160,12 +166,8 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 					20: Role.CONTRIBUTOR,
 					10: Role.SUBSCRIBER,
 				};
-				const role = roleMap[roleLevel] ?? Role.CONTRIBUTOR;
-				if (!roleMap[roleLevel]) {
-					console.warn(
-						`[oauth] Unknown role level ${roleLevel} for domain ${domain}, defaulting to CONTRIBUTOR`,
-					);
-				}
+				const roleLevel = entry?.default_role ?? 30;
+				const role = roleMap[roleLevel] ?? Role.AUTHOR;
 
 				return { allowed: true, role };
 			},
