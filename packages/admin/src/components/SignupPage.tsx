@@ -388,7 +388,7 @@ export function SignupPage() {
 			<div className="w-full max-w-md">
 				{/* Header */}
 				<div className="text-center mb-8">
-					<div className="text-4xl font-bold mb-2">— Token Press</div>
+					<div className="flex flex-col items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width:80px;height:80px;margin-bottom:16px"><circle cx="50" cy="50" r="47" stroke="currentColor" stroke-width="4" fill="none"/><circle cx="50" cy="50" r="40" fill="currentColor"/><rect x="28" y="22" width="11" height="56" fill="#0f172a"/><rect x="20" y="22" width="32" height="10" fill="#0f172a"/><rect x="50" y="22" width="11" height="56" fill="#0f172a"/><rect x="50" y="22" width="22" height="10" fill="#0f172a"/><rect x="72" y="22" width="10" height="28" fill="#0f172a"/><rect x="50" y="40" width="22" height="10" fill="#0f172a"/><rect x="61" y="32" width="11" height="8" rx="2" fill="currentColor"/></svg><div className="text-2xl font-bold">Token Press</div></div>
 					<h1 className="text-2xl font-semibold text-kumo-default">
 						{step === "email" && "Create an account"}
 						{step === "check-email" && "Check your email"}

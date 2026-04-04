@@ -349,20 +349,17 @@ export function SidebarNav({ manifest }: SidebarNavProps) {
 						to="/"
 						className="emdash-brand-link flex w-full min-w-0 items-center gap-2 px-3 py-1"
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="22" height="22" className="shrink-0" aria-hidden="true">
-							<defs>
-								<path id="sb-p6" d="M 0 -150 C -92 -214  -156 -332   0 -430 C 156 -332   92 -214   0 -150" />
-							</defs>
-							<g transform="translate(500 500)" fill="none" stroke="currentColor" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round">
-								<use href="#sb-p6" transform="rotate(0)"/>
-								<use href="#sb-p6" transform="rotate(60)"/>
-								<use href="#sb-p6" transform="rotate(120)"/>
-								<use href="#sb-p6" transform="rotate(180)"/>
-								<use href="#sb-p6" transform="rotate(240)"/>
-								<use href="#sb-p6" transform="rotate(300)"/>
-							</g>
-							<circle cx="500" cy="500" r="52" fill="currentColor"/>
-						</svg>
+tttttt<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" className="shrink-0" aria-hidden="true">
+ttttttt<circle cx="50" cy="50" r="47" stroke="currentColor" strokeWidth="4" fill="none"/>
+ttttttt<circle cx="50" cy="50" r="40" fill="currentColor"/>
+ttttttt<rect x="28" y="22" width="11" height="56" fill="#1d2327"/>
+ttttttt<rect x="20" y="22" width="32" height="10" fill="#1d2327"/>
+ttttttt<rect x="50" y="22" width="11" height="56" fill="#1d2327"/>
+ttttttt<rect x="50" y="22" width="22" height="10" fill="#1d2327"/>
+ttttttt<rect x="72" y="22" width="10" height="28" fill="#1d2327"/>
+ttttttt<rect x="50" y="40" width="22" height="10" fill="#1d2327"/>
+ttttttt<rect x="61" y="32" width="11" height="8" rx="2" fill="currentColor"/>
+tttttt</svg>
 						<span className="emdash-brand-text font-semibold truncate">Token Press</span>
 					</Link>
 				</KumoSidebar.Header>
