@@ -658,10 +658,11 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 	}
 
 	if (msg.role === "error") {
+		const errText = typeof msg.message === "string" ? msg.message : JSON.stringify(msg.message);
 		return (
 			<div className="flex justify-start mb-4">
-				<div className="max-w-[75%] rounded-2xl rounded-tl-md border border-red-200 bg-red-50 text-red-700 px-4 py-2.5 text-sm dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
-					{msg.message}
+				<div className="max-w-[75%] rounded-2xl rounded-tl-md px-4 py-2.5 text-sm" style={{ border: "1px solid #fca5a5", backgroundColor: "#fef2f2", color: "#dc2626" }}>
+					{errText}
 				</div>
 			</div>
 		);
@@ -990,7 +991,7 @@ function ChatPage() {
 			await runAgenticLoop(apiMessages, abort.signal);
 		} catch (err) {
 			if ((err as { name?: string }).name !== "AbortError") {
-				const msg = err instanceof Error ? err.message : String(err);
+				const msg = err instanceof Error ? err.message : (typeof err === "object" ? JSON.stringify(err) : String(err));
 				setMessages((prev) => {
 					const next = [...prev];
 					const last = next[next.length - 1];
@@ -1106,7 +1107,8 @@ function ChatPage() {
 			/>
 
 			{/* Chat area */}
-			<div className="flex-1 flex flex-col min-w-0" style={{ color: "#1a1a2e" }}>
+			<div className="flex-1 flex flex-col min-w-0 tp-chat-area">
+			<style dangerouslySetInnerHTML={{ __html: `.tp-chat-area, .tp-chat-area * { color: #1f2937; } .tp-chat-area .btn-w, .tp-chat-area [style*="background: #2563eb"], .tp-chat-area [style*="background:#2563eb"] { color: #fff !important; } .tp-chat-area a[style*="color: #6b7280"] { color: #6b7280 !important; }` }} />
 				{/* Header */}
 				<div className="flex items-center justify-between px-6 py-3 border-b" style={{ backgroundColor: "#ffffff", borderColor: "#e5e7eb" }}>
 					<div className="flex items-center gap-3">
