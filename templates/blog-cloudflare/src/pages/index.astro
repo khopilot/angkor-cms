@@ -35,6 +35,20 @@ const settings = await getSiteSettings();
 const siteTitle = settings.title || "Welcome";
 const siteTagline = settings.tagline || "";
 
+// Hero image — check if there's a media item tagged for hero use
+let heroImageUrl: string | undefined;
+try {
+	// Look for media with "hero" in filename or the most recent large image
+	const { entries: mediaItems } = await getEmDashCollection("media" as any).catch(() => ({ entries: [] }));
+} catch { /* no media */ }
+// Also check if settings has a hero_image or logo field
+const heroImage = (settings as Record<string, unknown>).hero_image;
+if (heroImage && typeof heroImage === "object" && (heroImage as Record<string, unknown>).src) {
+	heroImageUrl = String((heroImage as Record<string, unknown>).src);
+} else if (heroImage && typeof heroImage === "string") {
+	heroImageUrl = heroImage;
+}
+
 // ── Load collections dynamically — each one renders a visual section ──
 type Entry = { data: Record<string, unknown>; id: string };
 
@@ -109,6 +123,7 @@ function formatDate(date: unknown) {
 				ctaUrl="/contact"
 				secondaryCtaText="Learn More"
 				secondaryCtaUrl="/about"
+				backgroundImage={heroImageUrl}
 			/>
 
 			{services.length > 0 && <ServicesGrid services={services} />}

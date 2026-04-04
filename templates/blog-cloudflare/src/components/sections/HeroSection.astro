@@ -6,6 +6,7 @@ interface Props {
 	ctaUrl?: string;
 	secondaryCtaText?: string;
 	secondaryCtaUrl?: string;
+	backgroundImage?: string;
 }
 const {
 	title,
@@ -14,10 +15,18 @@ const {
 	ctaUrl = "/contact",
 	secondaryCtaText,
 	secondaryCtaUrl,
+	backgroundImage,
 } = Astro.props;
+
+const hasImage = !!backgroundImage;
 ---
-<section class="hero">
-	<div class="hero-bg"></div>
+<section class="hero" data-has-image={hasImage || undefined}>
+	{hasImage ? (
+		<div class="hero-img" style={`background-image: url('${backgroundImage}')`}></div>
+	) : (
+		<div class="hero-bg"></div>
+	)}
+	<div class="hero-overlay"></div>
 	<div class="hero-inner">
 		<h1 class="hero-title">{title}</h1>
 		{subtitle && <p class="hero-subtitle">{subtitle}</p>}
@@ -33,7 +42,6 @@ const {
 	:root {
 		--tp-primary: #2563eb;
 		--tp-secondary: #7c3aed;
-		--tp-accent: #f59e0b;
 	}
 
 	.hero {
@@ -54,6 +62,24 @@ const {
 			radial-gradient(circle at 80% 70%, #fff 1px, transparent 1px);
 		background-size: 40px 40px;
 		animation: heroFloat 20s ease-in-out infinite;
+	}
+
+	.hero-img {
+		position: absolute;
+		inset: 0;
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+	}
+
+	.hero-overlay {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(135deg, rgba(15,23,42,0.7) 0%, rgba(30,58,138,0.5) 50%, rgba(49,46,129,0.6) 100%);
+	}
+
+	.hero[data-has-image] .hero-overlay {
+		background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.7) 100%);
 	}
 
 	@keyframes heroFloat {
@@ -84,6 +110,10 @@ const {
 		margin: 0 auto 2.5rem;
 		line-height: 1.7;
 		font-weight: 400;
+	}
+
+	.hero[data-has-image] .hero-subtitle {
+		color: rgba(255,255,255,0.85);
 	}
 
 	.hero-actions {
