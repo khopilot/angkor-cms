@@ -282,24 +282,12 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 					const path = typeof input.path === "string" ? input.path : "";
 					if (!path || path.includes("..")) return { error: "Invalid path" };
 
-					try {
-						const { env } = await import("cloudflare:workers");
-						const bucket = (env as Record<string, unknown>).MEDIA as { get: (key: string) => Promise<{ text: () => Promise<string> } | null> } | undefined;
-
-						// Read from R2 storage (template files stored under template/ prefix)
-						if (bucket) {
-							const obj = await bucket.get(`template/${path}`);
-							if (obj) {
-								const content = await obj.text();
-								return { path, content, size: content.length };
-							}
-						}
-
-						// Fallback: file not found in R2
-						return { error: `File not found: ${path}`, hint: "Use code_list_files to see available files" };
-					} catch (err) {
-						return { error: `Read failed: ${err instanceof Error ? err.message : String(err)}` };
+					// Read from plugin KV storage
+					const content = await ctx.kv.get<string>(`code:${path}`);
+					if (content) {
+						return { path, content, size: content.length };
 					}
+					return { error: `File not found: ${path}`, hint: "Use code_list_files to see available files, or this file hasn't been created yet" };
 				},
 			},
 
@@ -311,19 +299,17 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 					if (!path || path.includes("..")) return { error: "Invalid path" };
 					if (!content) return { error: "Content is required" };
 
-					try {
-						const { env } = await import("cloudflare:workers");
-						const bucket = (env as Record<string, unknown>).MEDIA as { put: (key: string, value: string) => Promise<void> } | undefined;
+					// Store in plugin KV
+					await ctx.kv.set(`code:${path}`, content);
 
-						if (bucket) {
-							await bucket.put(`template/${path}`, content);
-							return { success: true, path, size: content.length, message: `File written: ${path}` };
-						}
-
-						return { error: "Storage not available" };
-					} catch (err) {
-						return { error: `Write failed: ${err instanceof Error ? err.message : String(err)}` };
+					// Track file in index
+					const index = (await ctx.kv.get<string[]>("code:__index")) ?? [];
+					if (!index.includes(path)) {
+						index.push(path);
+						await ctx.kv.set("code:__index", index);
 					}
+
+					return { success: true, path, size: content.length, message: `File written: ${path}. Note: code changes require a rebuild to appear on the live site.` };
 				},
 			},
 
@@ -332,23 +318,10 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 					const input = isRecord(ctx.input) ? ctx.input : {};
 					const dir = typeof input.directory === "string" ? input.directory : "src";
 
-					try {
-						const { env } = await import("cloudflare:workers");
-						const bucket = (env as Record<string, unknown>).MEDIA as { list: (opts: { prefix: string }) => Promise<{ objects: Array<{ key: string; size: number }> }> } | undefined;
-
-						if (bucket) {
-							const result = await bucket.list({ prefix: `template/${dir}` });
-							const files = result.objects.map((o) => ({
-								path: o.key.replace("template/", ""),
-								size: o.size,
-							}));
-							return { directory: dir, files, count: files.length };
-						}
-
-						return { error: "Storage not available" };
-					} catch (err) {
-						return { error: `List failed: ${err instanceof Error ? err.message : String(err)}` };
-					}
+					// List from index in KV
+					const index = (await ctx.kv.get<string[]>("code:__index")) ?? [];
+					const files = index.filter((f) => f.startsWith(dir)).map((f) => ({ path: f }));
+					return { directory: dir, files, count: files.length };
 				},
 			},
 
