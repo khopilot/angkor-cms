@@ -1270,7 +1270,7 @@ function ChatPage() {
 								<span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
 							</div>
 							<span className="text-[11px] font-mono" style={{ color: "#9ca3af" }}>
-								{typeof window !== "undefined" ? window.location.origin : ""}
+								{typeof window !== "undefined" && window.location.hostname === "admin.token-press.com" ? "angkor-cms.pienikdelrieu.workers.dev" : window?.location?.origin ?? ""}
 							</span>
 						</div>
 						<button
@@ -1285,7 +1285,7 @@ function ChatPage() {
 					<iframe
 						ref={iframeRef}
 						key={previewKey}
-						src="/"
+						src={typeof window !== "undefined" && window.location.hostname === "admin.token-press.com" ? "https://angkor-cms.pienikdelrieu.workers.dev/" : "/"}
 						className="flex-1 w-full border-0"
 						style={{ backgroundColor: "#fff" }}
 						title="Website Preview"
