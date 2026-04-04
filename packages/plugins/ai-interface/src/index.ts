@@ -114,15 +114,37 @@ These auto-render on the homepage:
 "faq" → accordion | FIELDS: question (string), answer (text)
 "posts" → blog cards (exists)
 
-═══ CAPABILITIES ═══
+═══ CODE GENERATION (most powerful capability) ═══
+You can WRITE ACTUAL CODE — Astro components, Tailwind CSS, page layouts.
+- code_list_files: see existing template files
+- code_read_file: read a component to understand it before modifying
+- code_write_file: write/overwrite Astro components with Tailwind CSS
+
+When asked to change design/layout:
+1. code_read_file to see current component
+2. Modify with Tailwind v4 classes
+3. code_write_file to save
+4. Tell user to refresh preview
+
+Example: "Make the hero bigger with a video background"
+→ code_read_file({ path: "src/components/sections/HeroSection.astro" })
+→ Modify the component with new Tailwind classes
+→ code_write_file({ path: "src/components/sections/HeroSection.astro", content: "..." })
+
+Write PRODUCTION QUALITY code:
+- Use Tailwind v4 utility classes (installed)
+- Write responsive designs (sm:, md:, lg: breakpoints)
+- Use CSS animations and transitions
+- Follow Astro component patterns (frontmatter + template + style)
+
+═══ OTHER CAPABILITIES ═══
 - image_generate: AI images (DETAILED prompts: subject, lighting, mood, style)
 - web_browse: analyze sites for inspiration
-- settings_update({ hero_image: "/_emdash/api/media/file/ID.jpg" }): hero background
+- settings_update({ hero_image: "URL" }): hero background
 - site_blueprint: batch create entire site in one call
 - site_verify: check site health (ALWAYS call after building)
 - Respond in the user's language
-- Accept image uploads from user (drag-drop)
-- Accept file uploads (PDF, documents)`;
+- Accept image/file uploads from user`;
 
 /** Narrow unknown to a record */
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -250,6 +272,83 @@ export function createPlugin(options: AIInterfaceOptions = {}): ResolvedPlugin {
 							"X-Accel-Buffering": "no",
 						},
 					});
+				},
+			},
+
+			// ── Code Generation (read/write template files) ─────────────
+			"code/read": {
+				handler: async (ctx) => {
+					const input = isRecord(ctx.input) ? ctx.input : {};
+					const path = typeof input.path === "string" ? input.path : "";
+					if (!path || path.includes("..")) return { error: "Invalid path" };
+
+					try {
+						const { env } = await import("cloudflare:workers");
+						const bucket = (env as Record<string, unknown>).MEDIA as { get: (key: string) => Promise<{ text: () => Promise<string> } | null> } | undefined;
+
+						// Read from R2 storage (template files stored under template/ prefix)
+						if (bucket) {
+							const obj = await bucket.get(`template/${path}`);
+							if (obj) {
+								const content = await obj.text();
+								return { path, content, size: content.length };
+							}
+						}
+
+						// Fallback: file not found in R2
+						return { error: `File not found: ${path}`, hint: "Use code_list_files to see available files" };
+					} catch (err) {
+						return { error: `Read failed: ${err instanceof Error ? err.message : String(err)}` };
+					}
+				},
+			},
+
+			"code/write": {
+				handler: async (ctx) => {
+					const input = isRecord(ctx.input) ? ctx.input : {};
+					const path = typeof input.path === "string" ? input.path : "";
+					const content = typeof input.content === "string" ? input.content : "";
+					if (!path || path.includes("..")) return { error: "Invalid path" };
+					if (!content) return { error: "Content is required" };
+
+					try {
+						const { env } = await import("cloudflare:workers");
+						const bucket = (env as Record<string, unknown>).MEDIA as { put: (key: string, value: string) => Promise<void> } | undefined;
+
+						if (bucket) {
+							await bucket.put(`template/${path}`, content);
+							return { success: true, path, size: content.length, message: `File written: ${path}` };
+						}
+
+						return { error: "Storage not available" };
+					} catch (err) {
+						return { error: `Write failed: ${err instanceof Error ? err.message : String(err)}` };
+					}
+				},
+			},
+
+			"code/list": {
+				handler: async (ctx) => {
+					const input = isRecord(ctx.input) ? ctx.input : {};
+					const dir = typeof input.directory === "string" ? input.directory : "src";
+
+					try {
+						const { env } = await import("cloudflare:workers");
+						const bucket = (env as Record<string, unknown>).MEDIA as { list: (opts: { prefix: string }) => Promise<{ objects: Array<{ key: string; size: number }> }> } | undefined;
+
+						if (bucket) {
+							const result = await bucket.list({ prefix: `template/${dir}` });
+							const files = result.objects.map((o) => ({
+								path: o.key.replace("template/", ""),
+								size: o.size,
+							}));
+							return { directory: dir, files, count: files.length };
+						}
+
+						return { error: "Storage not available" };
+					} catch (err) {
+						return { error: `List failed: ${err instanceof Error ? err.message : String(err)}` };
+					}
 				},
 			},
 

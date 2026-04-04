@@ -265,6 +265,9 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 			// Fallback: return URL only
 			return { success: true, imageUrl: imgUrl, prompt: toolInput.prompt, uploaded: false, note: "Image generated but upload failed. URL expires in 24h." };
 		}
+		case "code_read_file": { response = await apiFetch(`${API_BASE}/code/read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: toolInput.path }) }); break; }
+		case "code_write_file": { response = await apiFetch(`${API_BASE}/code/write`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: toolInput.path, content: toolInput.content }) }); break; }
+		case "code_list_files": { response = await apiFetch(`${API_BASE}/code/list`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ directory: toolInput.directory }) }); break; }
 		case "web_browse": { const { url } = toolInput; response = await apiFetch(`${API_BASE}/browse`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }); break; }
 		case "site_get_config": { response = await get("/_emdash/api/plugins/site-deployer/config"); break; }
 		case "site_set_config": { response = await post("/_emdash/api/plugins/site-deployer/config/save", toolInput); break; }

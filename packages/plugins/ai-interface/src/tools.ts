@@ -864,6 +864,41 @@ export const CMS_TOOLS: AnthropicTool[] = [
 		},
 	},
 
+	// ── Code Generation (write actual website code) ──────────────────────────
+	{
+		name: "code_read_file",
+		description: "Read a file from the website template. Use to understand existing components before modifying them. Returns the file content.",
+		input_schema: {
+			type: "object",
+			properties: {
+				path: { type: "string", description: "File path relative to template root (e.g. 'src/components/sections/HeroSection.astro', 'src/pages/index.astro', 'src/styles/global.css')" },
+			},
+			required: ["path"],
+		},
+	},
+	{
+		name: "code_write_file",
+		description: "Write or overwrite a file in the website template. Use to create new Astro components, pages, or modify existing ones. Write complete Astro components with Tailwind CSS classes. The site auto-rebuilds after changes.",
+		input_schema: {
+			type: "object",
+			properties: {
+				path: { type: "string", description: "File path relative to template root (e.g. 'src/components/sections/NewSection.astro', 'src/pages/about.astro')" },
+				content: { type: "string", description: "Complete file content (Astro component with frontmatter, HTML, and scoped styles or Tailwind classes)" },
+			},
+			required: ["path", "content"],
+		},
+	},
+	{
+		name: "code_list_files",
+		description: "List files in the website template directory. Use to discover existing components, pages, and styles.",
+		input_schema: {
+			type: "object",
+			properties: {
+				directory: { type: "string", description: "Directory path relative to template root (e.g. 'src/components/sections', 'src/pages', 'src/styles'). Default: 'src'" },
+			},
+		},
+	},
+
 	// ── Site Verification ─────────────────────────────────────────────────────
 	{
 		name: "site_verify",
