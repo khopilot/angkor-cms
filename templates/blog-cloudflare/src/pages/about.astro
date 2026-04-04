@@ -1,0 +1,44 @@
+---
+import { getEmDashEntry, getSiteSettings } from "emdash";
+import { PortableText } from "emdash/ui";
+import Base from "../layouts/Base.astro";
+
+const settings = await getSiteSettings();
+const siteTitle = settings.title || "Our Company";
+
+let aboutPage = null;
+try {
+	const result = await getEmDashEntry("pages", "about");
+	aboutPage = result.entry;
+} catch { /* no about page in CMS */ }
+---
+
+<Base title="About" description={`About ${siteTitle}`}>
+	<section class="page-hero">
+		<h1 class="page-hero-title">About {siteTitle}</h1>
+		{aboutPage?.data.excerpt && <p class="page-hero-subtitle">{String(aboutPage.data.excerpt)}</p>}
+	</section>
+
+	<section class="page-content">
+		{aboutPage?.data.content ? (
+			<PortableText value={aboutPage.data.content} />
+		) : (
+			<div class="page-placeholder">
+				<p>About page content coming soon. Use the AI Assistant to create your about page.</p>
+			</div>
+		)}
+	</section>
+</Base>
+
+<style>
+	.page-hero {
+		padding: 5rem 1.5rem 3rem;
+		background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #312e81 100%);
+		color: #fff;
+		text-align: center;
+	}
+	.page-hero-title { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; margin: 0 0 0.75rem; }
+	.page-hero-subtitle { font-size: 1.1rem; color: #93c5fd; margin: 0; max-width: 36rem; margin: 0 auto; }
+	.page-content { max-width: 48rem; margin: 0 auto; padding: 3rem 1.5rem 5rem; font-size: 1.05rem; line-height: 1.8; color: #374151; }
+	.page-placeholder { text-align: center; padding: 3rem; color: #9ca3af; }
+</style>

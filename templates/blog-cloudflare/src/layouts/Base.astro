@@ -36,7 +36,10 @@ const {
 	author,
 	content,
 } = Astro.props;
-const siteTitle = "Token Press";
+// Read site settings from DB (not self-fetch)
+const _siteSettings = await import("emdash").then(m => m.getSiteSettings()).catch(() => ({}));
+const siteTitle = (_siteSettings as Record<string, unknown>).title as string || "Token Press";
+const tagline = (_siteSettings as Record<string, unknown>).tagline as string || "";
 // If title already includes site title (from getSeoMeta), use as-is
 const fullTitle = title.includes(siteTitle) ? title : `${title} — ${siteTitle}`;
 
@@ -180,18 +183,17 @@ const isLoggedIn = !!Astro.locals.user;
 							<img src="/angkor-ai-logo.svg" alt={siteTitle} height="40" width="40" />
 							<span>{siteTitle}</span>
 						</a>
-						<p class="footer-tagline">Insights on AI, technology and innovation.</p>
+						<p class="footer-tagline">{tagline || "Insights on AI, technology and innovation."}</p>
 					</div>
 					<div class="footer-nav">
 						<h4 class="footer-heading">Navigate</h4>
 						<ul class="footer-links">
 							<li><a href="/">Home</a></li>
-							<li><a href="/posts">All Posts</a></li>
 							{
-								pages.slice(0, 3).map((page) => (
+								(menu?.items?.length ? menu.items : autoNavLinks).map((item) => (
 									<li>
-										<a href={`/pages/${page.data.slug || page.id}`}>
-											{page.data.title}
+										<a href={'url' in item ? item.url : item.url}>
+											{'label' in item ? item.label : item.label}
 										</a>
 									</li>
 								))
@@ -199,25 +201,9 @@ const isLoggedIn = !!Astro.locals.user;
 						</ul>
 					</div>
 					<div class="footer-nav">
-						<h4 class="footer-heading">Connect</h4>
+						<h4 class="footer-heading">More</h4>
 						<ul class="footer-links">
-							{
-								menu?.items.map((item) => (
-									<li>
-										<a
-											href={item.url}
-											target={item.target}
-											rel={
-												item.target === "_blank"
-													? "noopener noreferrer"
-													: undefined
-											}
-										>
-											{item.label}
-										</a>
-									</li>
-								))
-							}
+							<li><a href="/posts">Blog</a></li>
 							<li><a href="/rss.xml">RSS Feed</a></li>
 						</ul>
 					</div>
