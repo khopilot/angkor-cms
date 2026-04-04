@@ -67,7 +67,7 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 		case "content_list": { const { collection, status, limit, locale } = toolInput; const p = new URLSearchParams(); if (status) p.set("status", String(status)); if (limit) p.set("limit", String(limit)); if (locale) p.set("locale", String(locale)); const qs = p.toString(); response = await get(`/_emdash/api/content/${collection}${qs ? `?${qs}` : ""}`); break; }
 		case "content_get": { const { collection, id } = toolInput; response = await get(`/_emdash/api/content/${collection}/${id}`); break; }
 		case "content_create": { const { collection, data, slug, status, locale, translationOf } = toolInput; response = await post(`/_emdash/api/content/${collection}`, { data, slug, status, locale, translationOf }); break; }
-		case "content_update": { const { collection, id, data, slug } = toolInput; response = await put(`/_emdash/api/content/${collection}/${id}`, { data, slug }); break; }
+		case "content_update": { const { collection, id, data, slug } = toolInput; const body: Record<string, unknown> = {}; if (data) body.data = data; if (slug) body.slug = slug; response = await put(`/_emdash/api/content/${collection}/${id}`, body); break; }
 		case "content_publish": { const { collection, id } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/publish`); break; }
 		case "content_unpublish": { const { collection, id } = toolInput; response = await post(`/_emdash/api/content/${collection}/${id}/unpublish`); break; }
 		case "content_delete": { const { collection, id } = toolInput; response = await del(`/_emdash/api/content/${collection}/${id}`); break; }
@@ -88,11 +88,11 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 		case "schema_delete_field": { const { collection, fieldSlug } = toolInput; response = await del(`/_emdash/api/schema/collections/${collection}/fields/${fieldSlug}`); break; }
 		case "media_list": { const { mimeType, limit } = toolInput; const p = new URLSearchParams(); if (mimeType) p.set("mimeType", String(mimeType)); if (limit) p.set("limit", String(limit)); const qs = p.toString(); response = await get(`/_emdash/api/media${qs ? `?${qs}` : ""}`); break; }
 		case "media_get": { const { id } = toolInput; response = await get(`/_emdash/api/media/${id}`); break; }
-		case "media_update": { const { id, alt, caption } = toolInput; response = await put(`/_emdash/api/media/${id}`, { alt, caption }); break; }
+		case "media_update": { const { id, alt, caption } = toolInput; const body: Record<string, unknown> = {}; if (alt !== undefined) body.alt = alt; if (caption !== undefined) body.caption = caption; response = await put(`/_emdash/api/media/${id}`, body); break; }
 		case "media_delete": { const { id } = toolInput; response = await del(`/_emdash/api/media/${id}`); break; }
 		case "search": { const { query, limit } = toolInput; const p = new URLSearchParams({ q: String(query) }); if (limit) p.set("limit", String(limit)); response = await get(`/_emdash/api/search?${p.toString()}`); break; }
 		case "taxonomy_list": { response = await get("/_emdash/api/taxonomies"); break; }
-		case "taxonomy_get": { const { taxonomy } = toolInput; response = await get(`/_emdash/api/taxonomies/${taxonomy}`); break; }
+		case "taxonomy_get": { const { taxonomy } = toolInput; response = await get(`/_emdash/api/taxonomies/${taxonomy}/terms`); break; }
 		case "taxonomy_create_term": { const { taxonomy, name, slug, description } = toolInput; response = await post(`/_emdash/api/taxonomies/${taxonomy}/terms`, { name, slug, description }); break; }
 		case "taxonomy_update_term": { const { taxonomy, termSlug, name, description } = toolInput; response = await put(`/_emdash/api/taxonomies/${taxonomy}/terms/${termSlug}`, { name, description }); break; }
 		case "taxonomy_delete_term": { const { taxonomy, termSlug } = toolInput; response = await del(`/_emdash/api/taxonomies/${taxonomy}/terms/${termSlug}`); break; }
@@ -847,6 +847,7 @@ function ChatPage() {
 	const emptyTitle = React.useMemo(() => getEmptyTitle(pageCtx), [pageCtx]);
 
 	const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+	const [apiHistory, setApiHistory] = React.useState<Array<{ role: string; content: unknown }>>([]);
 	const [input, setInput] = React.useState("");
 	const [isStreaming, setIsStreaming] = React.useState(false);
 	const [conversationId, setConversationId] = React.useState<string>(uid());
@@ -1001,15 +1002,12 @@ function ChatPage() {
 		abortRef.current = abort;
 
 		try {
-			const apiMessages: Array<{ role: string; content: unknown }> = [];
-			for (const m of messages) {
-				if (m.role === "user") apiMessages.push({ role: "user", content: m.content });
-				else if (m.role === "assistant") apiMessages.push({ role: "assistant", content: m.text });
-			}
+			// Use the FULL API history (preserves tool_use + tool_result context)
+			const apiMessages = [...apiHistory];
+
 			// Build the last user message with attachments (Anthropic vision format)
 			if (currentAttachments.length > 0) {
 				const contentParts: Array<unknown> = [];
-				// Add images as base64
 				for (const att of currentAttachments) {
 					if (att.type.startsWith("image/")) {
 						contentParts.push({
@@ -1017,7 +1015,6 @@ function ChatPage() {
 							source: { type: "base64", media_type: att.type, data: att.base64 },
 						});
 					} else {
-						// Non-image files: send as text description
 						try {
 							const text = atob(att.base64);
 							contentParts.push({
@@ -1105,6 +1102,8 @@ function ChatPage() {
 			}
 			conv.push({ role: "user", content: toolResults });
 		}
+		// Save full API conversation (preserves tool_use + tool_result for next turn)
+		setApiHistory(conv);
 	}
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1112,7 +1111,7 @@ function ChatPage() {
 	};
 
 	const newChat = () => {
-		if (!isStreaming) { setMessages([]); setConversationId(uid()); }
+		if (!isStreaming) { setMessages([]); setApiHistory([]); setConversationId(uid()); }
 	};
 
 	const loadConversation = async (id: string) => {

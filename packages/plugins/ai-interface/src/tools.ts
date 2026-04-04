@@ -535,13 +535,16 @@ export const CMS_TOOLS: AnthropicTool[] = [
 	},
 	{
 		name: "settings_update",
-		description: "Update site settings. Only include fields you want to change.",
+		description: "Update site settings. Only include fields you want to change. Use this for site name, tagline, hero image, logo — NEVER use site_set_config for these.",
 		input_schema: {
 			type: "object",
 			properties: {
-				title: { type: "string", description: "Site title" },
-				tagline: { type: "string", description: "Site tagline/description" },
+				title: { type: "string", description: "Site title (shown in hero and browser tab)" },
+				tagline: { type: "string", description: "Site tagline/description (shown in hero subtitle)" },
+				hero_image: { type: "string", description: "Hero background image URL (e.g. '/_emdash/api/media/file/ID.jpg')" },
 				postsPerPage: { type: "number", description: "Posts per page for pagination" },
+				url: { type: "string", description: "Site URL (e.g. 'https://mysite.com')" },
+				social: { type: "object", description: "Social links: { twitter, github, facebook, instagram, linkedin, youtube }", additionalProperties: true },
 			},
 		},
 	},
