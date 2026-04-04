@@ -6,6 +6,12 @@
  * they automatically appear here with professional design components.
  * Falls back to a blog layout if no collections exist.
  */
+// If this is the Token Press platform domain, show the landing page
+const hostname = Astro.url.hostname;
+if (hostname === "token-press.com" || hostname === "www.token-press.com") {
+	return Astro.redirect("/token-press");
+}
+
 import { getEmDashCollection, getEmDashEntry, getEntryTerms, getSiteSettings } from "emdash";
 import { Image } from "emdash/ui";
 import Base from "../layouts/Base.astro";
