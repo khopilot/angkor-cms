@@ -860,4 +860,29 @@ export const CMS_TOOLS: AnthropicTool[] = [
 			required: ["domain"],
 		},
 	},
+
+	// ── Site Verification ─────────────────────────────────────────────────────
+	{
+		name: "site_verify",
+		description:
+			"Verify the built site is working. Checks that collections have published content, menu has items, and settings are configured. MUST be called after building a site — NEVER skip this. Returns a health report with score and issues to fix. If score < 100%, fix the issues and call site_verify again.",
+		input_schema: {
+			type: "object",
+			properties: {
+				check_collections: {
+					type: "array",
+					items: { type: "string" },
+					description: "Collection slugs to verify have published content (e.g. ['services', 'team', 'testimonials'])",
+				},
+				check_menu: {
+					type: "string",
+					description: "Menu slug to verify has items (default: 'primary')",
+				},
+				check_settings: {
+					type: "boolean",
+					description: "Verify site title and tagline are set (default: true)",
+				},
+			},
+		},
+	},
 ];

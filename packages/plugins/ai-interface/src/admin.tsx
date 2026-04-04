@@ -270,6 +270,55 @@ async function executeCmsTool(toolName: string, toolInput: Record<string, unknow
 		case "site_set_config": { response = await post("/_emdash/api/plugins/site-deployer/config/save", toolInput); break; }
 		case "site_deploy": { response = await post("/_emdash/api/plugins/site-deployer/deploy"); break; }
 		case "site_status": { response = await get("/_emdash/api/plugins/site-deployer/status"); break; }
+		case "site_verify": {
+			const checks = toolInput;
+			const report: { score: number; passed: string[]; failed: string[]; warnings: string[] } = { score: 0, passed: [], failed: [], warnings: [] };
+			let total = 0;
+			let pass = 0;
+
+			// Check settings
+			if (checks.check_settings !== false) {
+				total++;
+				const settingsRes = await get("/_emdash/api/settings");
+				if (settingsRes.ok) {
+					const sData = await settingsRes.json() as { data?: Record<string, unknown> };
+					const s = (sData.data ?? sData) as Record<string, unknown>;
+					if (s.title && s.title !== "My Site" && s.title !== "EmDash" && s.title !== "Token Press") {
+						pass++; report.passed.push("Site title: " + String(s.title));
+					} else {
+						report.failed.push("Site title is missing or default");
+					}
+					if (s.tagline) { report.passed.push("Tagline: " + String(s.tagline)); } else { report.warnings.push("No tagline set"); }
+				} else { report.failed.push("Could not read settings"); }
+			}
+
+			// Check collections
+			const collections = Array.isArray(checks.check_collections) ? checks.check_collections as string[] : [];
+			for (const slug of collections) {
+				total++;
+				const res = await get(`/_emdash/api/content/${slug}?status=published&limit=1`);
+				if (res.ok) {
+					const d = await res.json() as { data?: { items?: unknown[] } };
+					const items = d.data?.items ?? [];
+					if (items.length > 0) { pass++; report.passed.push(`${slug}: has published content`); }
+					else { report.failed.push(`${slug}: NO published content`); }
+				} else { report.failed.push(`${slug}: collection missing or API error`); }
+			}
+
+			// Check menu
+			const menuSlug = typeof checks.check_menu === "string" ? checks.check_menu : "primary";
+			total++;
+			const menuRes = await get(`/_emdash/api/menus/${menuSlug}`);
+			if (menuRes.ok) {
+				const mData = await menuRes.json() as { data?: { items?: unknown[] } };
+				const items = mData.data?.items ?? [];
+				if (items.length > 0) { pass++; report.passed.push(`Menu "${menuSlug}": ${items.length} items`); }
+				else { report.failed.push(`Menu "${menuSlug}": exists but EMPTY`); }
+			} else { report.failed.push(`Menu "${menuSlug}": not found`); }
+
+			report.score = total > 0 ? Math.round((pass / total) * 100) : 0;
+			return report;
+		}
 		case "site_set_domain": { const { domain } = toolInput; response = await post("/_emdash/api/plugins/site-deployer/domain/set", { domain }); break; }
 		default: return { error: `Unknown tool: ${toolName}` };
 	}
