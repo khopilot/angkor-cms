@@ -138,7 +138,7 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 					return null;
 				}
 
-				// Check allowed_domains table first
+				// Check if this domain has a specific role configured
 				const entry = await emdash.db
 					.selectFrom("allowed_domains")
 					.selectAll()
@@ -146,17 +146,7 @@ export const GET: APIRoute = async ({ params, request, locals, session, redirect
 					.where("enabled", "=", 1)
 					.executeTakeFirst();
 
-				// If no allowed_domains are configured at all, allow everyone (open signup)
-				const totalDomains = await emdash.db
-					.selectFrom("allowed_domains")
-					.select(emdash.db.fn.countAll().as("count"))
-					.executeTakeFirst();
-				const hasAnyDomains = Number(totalDomains?.count ?? 0) > 0;
-
-				if (!entry && hasAnyDomains) {
-					// Domains are configured but this one isn't allowed
-					return null;
-				}
+				// ALWAYS allow signup — Token Press is open to everyone
 
 				// Map role level or default to EDITOR for open signup
 				const roleMap: Record<number, RoleLevel> = {
